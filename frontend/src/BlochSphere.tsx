@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Line, OrbitControls, Sphere } from '@react-three/drei'
 import * as THREE from 'three'
@@ -15,19 +15,12 @@ function toSceneVector({ x, y, z }: Vector3Like) {
   return new THREE.Vector3(x, z, y)
 }
 
+const SHAFT_RADIUS = 0.04
+
 function BlochArrow({ target, color }: { target: Vector3Like; color: string }) {
-  const arrow = useMemo(
-    () =>
-      new THREE.ArrowHelper(
-        new THREE.Vector3(0, 1, 0),
-        new THREE.Vector3(0, 0, 0),
-        0.001,
-        color,
-        0.12,
-        0.08,
-      ),
-    [color],
-  )
+  const groupRef = useRef<THREE.Group>(null)
+  const shaftRef = useRef<THREE.Mesh>(null)
+  const headRef = useRef<THREE.Mesh>(null)
   const current = useRef(new THREE.Vector3(0, 0, 0))
 
   // The backend is the sole source of quantum-computed values (see the
@@ -36,20 +29,39 @@ function BlochArrow({ target, color }: { target: Vector3Like; color: string }) {
   useFrame((_, delta) => {
     const t = toSceneVector(target)
     current.current.lerp(t, Math.min(1, delta * 6))
-    const length = current.current.length()
-    if (length > 0.001) {
-      arrow.setDirection(current.current.clone().normalize())
-    }
+    const length = Math.max(current.current.length(), 0.001)
+    const dir =
+      current.current.lengthSq() > 1e-8
+        ? current.current.clone().normalize()
+        : new THREE.Vector3(0, 1, 0)
+
     // Scale the arrowhead with the shaft length instead of using a fixed
-    // size - a fixed head (e.g. 0.12) is larger than short vectors like a
+    // size - a fixed head is larger than short vectors like a
     // heavily-entangled qubit's ~0.08 Bloch vector, which visually swallows
     // the whole arrow and makes very different lengths look the same.
-    const headLength = Math.min(0.12, length * 0.35)
-    const headWidth = Math.min(0.08, length * 0.22)
-    arrow.setLength(Math.max(length, 0.001), headLength, headWidth)
+    const headLength = Math.min(0.24, length * 0.7)
+    const headWidth = Math.min(0.16, length * 0.44)
+    const shaftLength = Math.max(length - headLength, 0.001)
+
+    groupRef.current?.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)
+    shaftRef.current?.scale.set(SHAFT_RADIUS, shaftLength, SHAFT_RADIUS)
+    shaftRef.current?.position.set(0, shaftLength / 2, 0)
+    headRef.current?.scale.set(headWidth, headLength, headWidth)
+    headRef.current?.position.set(0, shaftLength + headLength / 2, 0)
   })
 
-  return <primitive object={arrow} />
+  return (
+    <group ref={groupRef}>
+      <mesh ref={shaftRef}>
+        <cylinderGeometry args={[1, 1, 1, 8]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh ref={headRef}>
+        <coneGeometry args={[1, 1, 12]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+    </group>
+  )
 }
 
 interface BlochSphereProps {

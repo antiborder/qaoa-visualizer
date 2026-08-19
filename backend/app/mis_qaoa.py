@@ -3,7 +3,7 @@ from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector
 from scipy.optimize import minimize
 
-from .graph import EDGES, NODES
+from .graph import Graph
 from .mis import PENALTY_A, brute_force_mis, expected_objective_value
 
 # QUBO objective: maximize size - PENALTY_A * violations, i.e. (using
@@ -16,48 +16,50 @@ from .mis import PENALTY_A, brute_force_mis, expected_objective_value
 # RZZ(2*gamma*A/4) = RZZ(gamma*A/2) per edge. Mixer is the same RX(2*beta)
 # transverse-field mixer as Max-Cut. Verified against brute force: H_C
 # computed directly from this formula equals -objective - 0.5 for every
-# bitstring on this graph, confirming the sign/coefficients are correct.
+# bitstring on the bowtie graph, confirming the sign/coefficients are correct.
 
 GAMMA_MAX = 2 * np.pi
 BETA_MAX = np.pi
 
 
-def _degree(node: int) -> int:
-    return sum(1 for e in EDGES if e.source == node or e.target == node)
+def _degree(graph: Graph, node: int) -> int:
+    return sum(1 for e in graph.edges if e.source == node or e.target == node)
 
 
-def _z_coefficient(node: int) -> float:
-    return 0.5 - (PENALTY_A / 4) * _degree(node)
+def _z_coefficient(graph: Graph, node: int) -> float:
+    return 0.5 - (PENALTY_A / 4) * _degree(graph, node)
 
 
-def build_mis_circuit(gammas: list[float], betas: list[float]) -> QuantumCircuit:
-    n = len(NODES)
+def build_mis_circuit(graph: Graph, gammas: list[float], betas: list[float]) -> QuantumCircuit:
+    n = len(graph.nodes)
     qc = QuantumCircuit(n)
     qc.h(range(n))
     for gamma, beta in zip(gammas, betas):
-        for i, node in enumerate(NODES):
-            qc.rz(2 * gamma * _z_coefficient(node), i)
-        for edge in EDGES:
+        for i, node in enumerate(graph.nodes):
+            qc.rz(2 * gamma * _z_coefficient(graph, node), i)
+        for edge in graph.edges:
             qc.rzz(gamma * PENALTY_A / 2, edge.source, edge.target)
         qc.rx(2 * beta, range(n))
     return qc
 
 
-def analyze_mis_p1(gamma: float, beta: float) -> dict[str, float]:
-    qc = build_mis_circuit([gamma], [beta])
+def analyze_mis_p1(graph: Graph, gamma: float, beta: float) -> dict[str, float]:
+    qc = build_mis_circuit(graph, [gamma], [beta])
     sv = Statevector.from_instruction(qc)
     return sv.probabilities_dict()
 
 
-def expected_objective_at(gammas: list[float], betas: list[float]) -> float:
-    qc = build_mis_circuit(gammas, betas)
+def expected_objective_at(graph: Graph, gammas: list[float], betas: list[float]) -> float:
+    qc = build_mis_circuit(graph, gammas, betas)
     sv = Statevector.from_instruction(qc)
-    return expected_objective_value(sv.probabilities_dict())
+    return expected_objective_value(graph, sv.probabilities_dict())
 
 
-def compute_mis_depth_scan(max_p: int = 4, restarts: int = 6, cobyla_maxiter: int = 100, seed: int = 3):
+def compute_mis_depth_scan(
+    graph: Graph, max_p: int = 4, restarts: int = 6, cobyla_maxiter: int = 100, seed: int = 3
+):
     rng = np.random.default_rng(seed)
-    optimal_size, _ = brute_force_mis()
+    optimal_size, _ = brute_force_mis(graph)
 
     p_values = list(range(1, max_p + 1))
     best_values = []
@@ -67,7 +69,7 @@ def compute_mis_depth_scan(max_p: int = 4, restarts: int = 6, cobyla_maxiter: in
         def objective(x, p=p):
             gammas = np.clip(x[:p], 0, GAMMA_MAX).tolist()
             betas = np.clip(x[p:], 0, BETA_MAX).tolist()
-            return -expected_objective_at(gammas, betas)
+            return -expected_objective_at(graph, gammas, betas)
 
         best = -99.0
         for _ in range(restarts):

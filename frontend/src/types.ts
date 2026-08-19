@@ -1,5 +1,7 @@
 export interface GraphNode {
   id: number
+  x: number
+  y: number
 }
 
 export interface GraphEdge {
@@ -8,8 +10,13 @@ export interface GraphEdge {
 }
 
 export interface GraphData {
+  id: string
   nodes: GraphNode[]
   edges: GraphEdge[]
+}
+
+export interface GraphInfo extends GraphData {
+  label: string
 }
 
 export interface PartitionEntry {
@@ -69,6 +76,10 @@ export interface LandscapeResult {
   bestOnGrid: { gamma: number; beta: number; expectedCutValue: number }
 }
 
+export interface LayerLandscapeResult extends LandscapeResult {
+  oneLayerValue: number
+}
+
 export interface TrajectoryPoint {
   gamma: number
   beta: number
@@ -96,6 +107,10 @@ export interface DepthScanResult {
   bestExpectedCutValues: number[]
   approximationRatios: number[]
   gradientVariances: number[]
+  bestGammas: number[][]
+  bestBetas: number[][]
+  adiabaticGammas: number[][]
+  adiabaticBetas: number[][]
 }
 
 export interface MISSelectionEntry {

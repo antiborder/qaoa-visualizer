@@ -51,6 +51,35 @@ export function ColVec({ top, bottom }: { top: ReactNode; bottom: ReactNode }) {
   )
 }
 
+/** A supplementary/definition callout box, set apart from the main flow of prose. */
+export function Callout({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div
+      style={{
+        background: '#f8fafc',
+        border: '1px solid #e2e8f0',
+        borderLeft: '4px solid #94a3b8',
+        borderRadius: 8,
+        padding: '16px 20px',
+        margin: '20px 0',
+      }}
+    >
+      <h4
+        style={{
+          fontSize: 13,
+          margin: '0 0 10px',
+          color: '#64748b',
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        }}
+      >
+        {label}
+      </h4>
+      {children}
+    </div>
+  )
+}
+
 /** A centered, larger-font display line for a single formula. */
 export function FormulaBlock({ children }: { children: ReactNode }) {
   return (

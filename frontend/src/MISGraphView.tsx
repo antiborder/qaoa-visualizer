@@ -1,4 +1,3 @@
-import { NODE_POSITIONS } from './GraphView'
 import type { GraphData, MISSelectionEntry } from './types'
 
 interface MISGraphViewProps {
@@ -49,13 +48,14 @@ function MISLegend() {
 
 export function MISGraphView({ graph, selection }: MISGraphViewProps) {
   const selectedByNode = new Map(selection.map((s) => [s.node, s.selected]))
+  const positionByNode = new Map(graph.nodes.map((n) => [n.id, { x: n.x, y: n.y }]))
 
   return (
     <div>
       <svg viewBox="0 0 400 300" width="100%" role="img" aria-label="Independent set graph">
         {graph.edges.map((edge, i) => {
-          const from = NODE_POSITIONS[edge.source]
-          const to = NODE_POSITIONS[edge.target]
+          const from = positionByNode.get(edge.source)!
+          const to = positionByNode.get(edge.target)!
           const violated =
             selectedByNode.get(edge.source) === 1 && selectedByNode.get(edge.target) === 1
           return (
@@ -71,7 +71,7 @@ export function MISGraphView({ graph, selection }: MISGraphViewProps) {
           )
         })}
         {graph.nodes.map((node) => {
-          const pos = NODE_POSITIONS[node.id]
+          const pos = node
           const selected = selectedByNode.get(node.id) === 1
           return (
             <g key={node.id}>

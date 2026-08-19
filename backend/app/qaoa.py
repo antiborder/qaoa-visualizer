@@ -2,7 +2,7 @@ import numpy as np
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import DensityMatrix, Pauli, Statevector, partial_trace
 
-from .graph import EDGES, NODES
+from .graph import Graph
 from .maxcut import expected_cut_value
 
 # Cost Hamiltonian convention used throughout this app: H_C = sum_{(i,j) in E} Z_i Z_j.
@@ -16,44 +16,44 @@ from .maxcut import expected_cut_value
 # since RXGate(theta) = exp(-i*theta/2 * X).
 
 
-def build_cost_only_circuit(gamma: float) -> QuantumCircuit:
-    n = len(NODES)
+def build_cost_only_circuit(graph: Graph, gamma: float) -> QuantumCircuit:
+    n = len(graph.nodes)
     qc = QuantumCircuit(n)
     qc.h(range(n))
-    for edge in EDGES:
+    for edge in graph.edges:
         qc.rzz(2 * gamma, edge.source, edge.target)
     return qc
 
 
-def build_p1_circuit(gamma: float, beta: float) -> QuantumCircuit:
-    n = len(NODES)
+def build_p1_circuit(graph: Graph, gamma: float, beta: float) -> QuantumCircuit:
+    n = len(graph.nodes)
     qc = QuantumCircuit(n)
     qc.h(range(n))
-    for edge in EDGES:
+    for edge in graph.edges:
         qc.rzz(2 * gamma, edge.source, edge.target)
     qc.rx(2 * beta, range(n))
     return qc
 
 
-def build_qaoa_circuit(gammas: list[float], betas: list[float]) -> QuantumCircuit:
-    n = len(NODES)
+def build_qaoa_circuit(graph: Graph, gammas: list[float], betas: list[float]) -> QuantumCircuit:
+    n = len(graph.nodes)
     qc = QuantumCircuit(n)
     qc.h(range(n))
     for gamma, beta in zip(gammas, betas):
-        for edge in EDGES:
+        for edge in graph.edges:
             qc.rzz(2 * gamma, edge.source, edge.target)
         qc.rx(2 * beta, range(n))
     return qc
 
 
-def expected_cut_at_general(gammas: list[float], betas: list[float]) -> float:
-    qc = build_qaoa_circuit(gammas, betas)
+def expected_cut_at_general(graph: Graph, gammas: list[float], betas: list[float]) -> float:
+    qc = build_qaoa_circuit(graph, gammas, betas)
     sv = Statevector.from_instruction(qc)
-    return expected_cut_value(sv.probabilities_dict())
+    return expected_cut_value(graph, sv.probabilities_dict())
 
 
-def analyze_circuit(qc: QuantumCircuit):
-    n = len(NODES)
+def analyze_circuit(graph: Graph, qc: QuantumCircuit):
+    n = len(graph.nodes)
     sv = Statevector.from_instruction(qc)
 
     probabilities = sv.probabilities_dict()
@@ -65,7 +65,7 @@ def analyze_circuit(qc: QuantumCircuit):
         x = float(np.real(rho.expectation_value(Pauli("X"))))
         y = float(np.real(rho.expectation_value(Pauli("Y"))))
         z = float(np.real(rho.expectation_value(Pauli("Z"))))
-        bloch_vectors.append({"node": NODES[qubit], "x": x, "y": y, "z": z})
+        bloch_vectors.append({"node": graph.nodes[qubit], "x": x, "y": y, "z": z})
 
     return {
         "probabilities": probabilities,
@@ -73,26 +73,38 @@ def analyze_circuit(qc: QuantumCircuit):
     }
 
 
-def max_probability_deviation(probabilities: dict[str, float]) -> float:
-    n = len(NODES)
+def max_probability_deviation(graph: Graph, probabilities: dict[str, float]) -> float:
+    n = len(graph.nodes)
     uniform = 1 / (2**n)
     return max(abs(p - uniform) for p in probabilities.values())
 
 
-def expected_cut_at(gamma: float, beta: float) -> float:
-    qc = build_p1_circuit(gamma, beta)
+def expected_cut_at(graph: Graph, gamma: float, beta: float) -> float:
+    qc = build_p1_circuit(graph, gamma, beta)
     sv = Statevector.from_instruction(qc)
-    return expected_cut_value(sv.probabilities_dict())
+    return expected_cut_value(graph, sv.probabilities_dict())
 
 
-def compute_landscape(gamma_steps: int = 40, beta_steps: int = 40):
+def compute_landscape(
+    graph: Graph,
+    gamma_steps: int = 80,
+    beta_steps: int = 80,
+    prefix_gammas: list[float] = (),
+    prefix_betas: list[float] = (),
+):
+    # prefix_gammas/prefix_betas hold earlier layers' angles fixed, so the
+    # grid sweeps only the NEXT layer's (gamma, beta) - e.g. with one prefix
+    # pair given, this is the p=2 landscape for layer 2 given a fixed layer 1.
+    # Empty prefixes (the default) reduce exactly to the plain p=1 landscape.
     gamma_values = np.linspace(0, 2 * np.pi, gamma_steps)
     beta_values = np.linspace(0, np.pi, beta_steps)
 
     grid = np.zeros((gamma_steps, beta_steps))
     for i, g in enumerate(gamma_values):
         for j, b in enumerate(beta_values):
-            grid[i, j] = expected_cut_at(g, b)
+            grid[i, j] = expected_cut_at_general(
+                graph, [*prefix_gammas, g], [*prefix_betas, b]
+            )
 
     # Gradient of the expected-cut surface w.r.t. (gamma, beta), via central
     # finite differences on the same grid - this is what a gradient-based

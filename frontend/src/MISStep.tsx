@@ -14,10 +14,11 @@ const API_BASE = 'http://localhost:8000'
 const DEBOUNCE_MS = 150
 
 interface MISStepProps {
+  graphId: string
   graph: GraphData
 }
 
-export function MISStep({ graph }: MISStepProps) {
+export function MISStep({ graphId, graph }: MISStepProps) {
   const [optimal, setOptimal] = useState<MISOptimalResult | null>(null)
   const [selectionIndex, setSelectionIndex] = useState(0)
   const [gamma, setGamma] = useState(0)
@@ -26,22 +27,25 @@ export function MISStep({ graph }: MISStepProps) {
   const [depthScan, setDepthScan] = useState<MISDepthScanResult | null>(null)
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/mis/optimal`)
+    setOptimal(null)
+    setSelectionIndex(0)
+    setDepthScan(null)
+    fetch(`${API_BASE}/api/mis/optimal?graphId=${graphId}`)
       .then((res) => res.json())
       .then(setOptimal)
-    fetch(`${API_BASE}/api/mis/depth-scan`)
+    fetch(`${API_BASE}/api/mis/depth-scan?graphId=${graphId}`)
       .then((res) => res.json())
       .then(setDepthScan)
-  }, [])
+  }, [graphId])
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetch(`${API_BASE}/api/mis/p1?gamma=${gamma}&beta=${beta}`)
+      fetch(`${API_BASE}/api/mis/p1?gamma=${gamma}&beta=${beta}&graphId=${graphId}`)
         .then((res) => res.json())
         .then(setP1)
     }, DEBOUNCE_MS)
     return () => clearTimeout(timer)
-  }, [gamma, beta])
+  }, [gamma, beta, graphId])
 
   // Histogram.tsx only cares that entries carry {bitstring, probability,
   // cutValue} and compares cutValue to optimalCutValue - reused as-is here
@@ -54,11 +58,11 @@ export function MISStep({ graph }: MISStepProps) {
 
   return (
     <section style={{ marginTop: 48, marginBottom: 64 }}>
-      <h1>Step 8: 別の組合せ最適化問題への一般化 — 最大独立集合</h1>
+      <h1>Step 9: 別の組合せ最適化問題への一般化 — 最大独立集合</h1>
       <p>
         同じ手順がMax-Cut以外にも通用することを、最大独立集合（Maximum Independent
-        Set, MIS）問題で確認します。同じbowtieグラフで「辺で結ばれた2ノードを同時に
-        選ばない」という制約のもとで、できるだけ多くのノードを選ぶ問題です。ペナルティ法で
+        Set, MIS）問題で確認します。Step 1で選んだのと同じグラフで「辺で結ばれた2ノードを
+        同時に選ばない」という制約のもとで、できるだけ多くのノードを選ぶ問題です。ペナルティ法で
         QUBOに変換し（違反した辺1本につき-2点）、コストハミルトニアンH_Cを導出し、
         Max-Cutと同じRZZ+RZ+RXの枠組みでQAOA回路を構成します。
       </p>
@@ -87,18 +91,21 @@ export function MISStep({ graph }: MISStepProps) {
       <h2 style={{ fontSize: 18, marginTop: 32 }}>p=1 QAOA回路で探索</h2>
       <p>
         Max-Cutと同じくγ・βスライダーで探索できますが、下の近似比グラフで見るように、
-        MISはp=1では約52%しか最適値に届きません。
+        MISはp=1では最適値に遠く届きません。
       </p>
 
-      <img
-        src="/circuits/step8_mis_p1.png"
-        alt="Step 8 MIS quantum circuit: H, per-node RZ gates, RZZ gates, then RX gates"
-        style={{ width: '100%', maxWidth: 800, display: 'block', margin: '16px auto' }}
-      />
+      <div style={{ overflowX: 'auto', margin: '16px 0' }}>
+        <img
+          src="/circuits/step8_mis_p1.png"
+          alt="Step 9 MIS quantum circuit: H, per-node RZ gates, RZZ gates, then RX gates"
+          style={{ width: '100%', minWidth: 550, maxWidth: 800, display: 'block', margin: '0 auto' }}
+        />
+      </div>
       <p style={{ fontSize: 12, color: '#6b7280', textAlign: 'center' }}>
-        Max-Cutの回路との違いは、RZZの前にノードごとのRZゲートが追加されている点です。
-        次数4のハブ（q2）はRZ(−3γ)、次数2の葉ノードはRZ(−γ)と、係数がノードごとに
-        異なることに注目してください——これがグラフ構造をH_Cに反映させる部分です。
+        回路図はbowtieグラフでの例です。Max-Cutの回路との違いは、RZZの前にノードごとの
+        RZゲートが追加されている点で、その係数はノードの次数（つながっている辺の本数）に
+        応じて決まります——これがグラフ構造をH_Cに反映させる部分です。次数が高いノードほど
+        係数の絶対値も大きくなります。
       </p>
       <label style={{ display: 'block', margin: '16px 0' }}>
         γ = {gamma.toFixed(2)}
@@ -145,8 +152,9 @@ export function MISStep({ graph }: MISStepProps) {
             referenceLine={{ value: 1.0, label: '真の最適解' }}
           />
           <p style={{ fontSize: 13, color: '#6b7280' }}>
-            Max-Cutはp=1で約98%に達しましたが、MISは同じp=1で約
-            {(depthScan.approximationRatios[0] * 100).toFixed(0)}%止まりで、p=4でも約
+            Step 7で見たMax-Cutのp=1近似比と比べて、MISは同じp=1で約
+            {(depthScan.approximationRatios[0] * 100).toFixed(0)}%、p=
+            {depthScan.pValues[depthScan.pValues.length - 1]}でも約
             {(depthScan.approximationRatios[depthScan.approximationRatios.length - 1] * 100).toFixed(0)}
             %までしか届きません。これはペナルティ法による制約の表現が、Max-Cutの
             「隣接ノードを分ける」という単純な構造よりも最適化しづらいランドスケープを

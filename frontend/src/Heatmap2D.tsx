@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { SURFACE_HUE } from './Landscape3D'
 import type { LandscapeResult, TrajectoryPoint } from './types'
 
 const WIDTH = 400
@@ -17,8 +18,17 @@ interface Heatmap2DProps {
   onSelectPoint?: (gamma: number, beta: number) => void
 }
 
-const LOW_COLOR = new THREE.Color('#64748b')
-const HIGH_COLOR = new THREE.Color('#22c55e')
+// The 3D surface's vertex colors go through Three.js lighting (ambient +
+// directional) and tone mapping before they reach the screen, which mutes
+// and darkens them well below the raw HSL values fed into setHSL there.
+// This flat SVG has no lighting pass, so matching those raw values made it
+// look far more saturated than the 3D scene actually renders. These
+// constants are tuned to the 3D scene's ON-SCREEN look instead, so the two
+// views read as the same muted sage-green palette.
+const HEATMAP_LIGHTNESS = 0.66
+const HEATMAP_SAT_LOW = 0.08
+const HEATMAP_SAT_HIGH = 0.32
+const cellColor = new THREE.Color()
 
 function toScreenX(gamma: number) {
   return (gamma / (Math.PI * 2)) * WIDTH
@@ -58,7 +68,7 @@ export function Heatmap2D({ landscape, trajectories = [], startPoint, onSelectPo
           betaValues.map((_, j) => {
             const value = expectedCutValues[i][j]
             const t = (value - minV) / range
-            const color = LOW_COLOR.clone().lerp(HIGH_COLOR, t)
+            cellColor.setHSL(SURFACE_HUE, HEATMAP_SAT_LOW + t * (HEATMAP_SAT_HIGH - HEATMAP_SAT_LOW), HEATMAP_LIGHTNESS)
             const y = HEIGHT - (j + 1) * cellH
             return (
               <rect
@@ -67,7 +77,7 @@ export function Heatmap2D({ landscape, trajectories = [], startPoint, onSelectPo
                 y={y}
                 width={cellW + 0.5}
                 height={cellH + 0.5}
-                fill={`rgb(${Math.round(color.r * 255)},${Math.round(color.g * 255)},${Math.round(color.b * 255)})`}
+                fill={`rgb(${Math.round(cellColor.r * 255)},${Math.round(cellColor.g * 255)},${Math.round(cellColor.b * 255)})`}
               />
             )
           }),
@@ -95,21 +105,33 @@ export function Heatmap2D({ landscape, trajectories = [], startPoint, onSelectPo
         ))}
 
         {startPoint && (
-          <circle
-            cx={toScreenX(startPoint.gamma)}
-            cy={toScreenY(startPoint.beta)}
-            r={5}
-            fill="none"
-            stroke="#1f2937"
-            strokeWidth={2}
-          />
+          <>
+            {/* White halo first so the dark ring stays visible over the
+                heatmap's own dark-valley regions, not just the light ones. */}
+            <circle
+              cx={toScreenX(startPoint.gamma)}
+              cy={toScreenY(startPoint.beta)}
+              r={6}
+              fill="none"
+              stroke="white"
+              strokeWidth={4}
+            />
+            <circle
+              cx={toScreenX(startPoint.gamma)}
+              cy={toScreenY(startPoint.beta)}
+              r={6}
+              fill="none"
+              stroke="#1f2937"
+              strokeWidth={2}
+            />
+          </>
         )}
 
         <circle
           cx={toScreenX(bestOnGrid.gamma)}
           cy={toScreenY(bestOnGrid.beta)}
           r={5}
-          fill="#ef4444"
+          fill="#f87171"
           stroke="white"
           strokeWidth={1.5}
         />

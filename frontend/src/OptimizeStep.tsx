@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ConvergenceChart } from './ConvergenceChart'
 import { ColVec, Frac, FormulaBlock } from './Formula'
-import { Heatmap2D } from './Heatmap2D'
+import { Landscape3D, nearestGridValue } from './Landscape3D'
 import type { LandscapeResult, OptimizerMethod, TrajectoryPoint } from './types'
 
 const API_BASE = 'http://localhost:8000'
@@ -41,8 +41,8 @@ const METHOD_INFO: MethodInfo[] = [
       '関数の値だけを使い、局所的な平面（1次関数）で近似しながら少しずつ良い方向へ進む、勾配を使わない手法です。探索する変数はx=(γ,β)という2次元のベクトルで、現在の点をx_k=(γ_k,β_k)と書きます。',
     steps: [
       <>
-        現在の点x<sub>k</sub>と、そこからγ方向・β方向にそれぞれ半径ρ（探索半径、大きいほど
-        大胆に動く。QAOAの層数pとは無関係の別の記号）だけずらした2点を頂点とする三角形
+        現在の点x<sub>k</sub>と、そこからγ方向・β方向にそれぞれ半径ρ（ロー、探索半径。
+        大きいほど大胆に動く）だけずらした2点を頂点とする三角形
         （シンプレックス、n+1個の頂点。2次元なので3点）を作る。この初期の三角形はランダム
         ではなく決まった手順で作られる（乱数を使うのはSPSAだけ）
       </>,
@@ -62,7 +62,7 @@ const METHOD_INFO: MethodInfo[] = [
     ],
     values: 'このアプリの値：初期のρ=0.6、最大反復回数40回。',
     pros: '勾配計算が不要。低次元・ノイズの少ない環境では少ない評価回数で収束',
-    cons: '高次元（層数pが大きい）やノイズの強い環境には弱い',
+    cons: '高次元（パラメータ数が多い）やノイズの強い環境には弱い',
   },
   {
     key: 'spsa',
@@ -221,12 +221,38 @@ const METHOD_INFO: MethodInfo[] = [
   },
 ]
 
+interface MethodBoxProps {
+  color: string
+  children: ReactNode
+}
+
+// A colored variant of the app's usual gray Callout, used to visually tell
+// the 3 optimizer write-ups apart at a glance - each keyed to the same color
+// used for that method's trajectory line in the heatmap/convergence chart.
+function MethodBox({ color, children }: MethodBoxProps) {
+  return (
+    <div
+      style={{
+        background: `${color}12`,
+        border: `1px solid ${color}40`,
+        borderLeft: `5px solid ${color}`,
+        borderRadius: 8,
+        padding: '18px 22px',
+        margin: '24px 0',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
 interface OptimizeStepProps {
+  graphId: string
   landscape: LandscapeResult | null
   optimalCutValue: number
 }
 
-export function OptimizeStep({ landscape, optimalCutValue }: OptimizeStepProps) {
+export function OptimizeStep({ graphId, landscape, optimalCutValue }: OptimizeStepProps) {
   const [startPoint, setStartPoint] = useState({ gamma: 3.0, beta: 1.0 })
   const [trajectories, setTrajectories] = useState<Record<OptimizerMethod, TrajectoryPoint[]>>({
     cobyla: [],
@@ -235,10 +261,14 @@ export function OptimizeStep({ landscape, optimalCutValue }: OptimizeStepProps) 
   })
   const [running, setRunning] = useState<OptimizerMethod | null>(null)
 
+  useEffect(() => {
+    setTrajectories({ cobyla: [], spsa: [], gradient: [] })
+  }, [graphId])
+
   const runOptimizer = async (method: OptimizerMethod) => {
     setRunning(method)
     const res = await fetch(
-      `${API_BASE}/api/qaoa/optimize?method=${method}&gamma0=${startPoint.gamma}&beta0=${startPoint.beta}`,
+      `${API_BASE}/api/qaoa/optimize?method=${method}&gamma0=${startPoint.gamma}&beta0=${startPoint.beta}&graphId=${graphId}`,
     )
     const data = await res.json()
     setTrajectories((prev) => ({ ...prev, [method]: data.trajectory }))
@@ -255,53 +285,55 @@ export function OptimizeStep({ landscape, optimalCutValue }: OptimizeStepProps) 
     <section style={{ marginTop: 48, marginBottom: 64 }}>
       <h1>Step 5: 古典最適化ループ</h1>
       <p>
-        ヒートマップをクリックして開始点(γ,β)を選び、3つの古典最適化アルゴリズムに
+        下のスライダーで開始点(γ,β)を選び、3つの古典最適化アルゴリズムに
         同じ開始点から探索させて比較します。COBYLA・SPSA・勾配法（パラメータシフト則、
         Qiskit回路を実際に±π/2シフトして評価する厳密な微分）はそれぞれ異なる戦略で
         (γ,β)空間を探索し、量子回路はその都度Qiskitで実行されます。
       </p>
 
-      {METHOD_INFO.map((m, i) => (
-        <div
-          key={m.key}
-          style={{
-            marginTop: i === 0 ? 24 : 32,
-            paddingTop: i === 0 ? 0 : 16,
-            borderTop: i === 0 ? undefined : '1px solid #e5e7eb',
-          }}
-        >
-          <h3 style={{ fontSize: 17, margin: '0 0 4px' }}>{m.name}</h3>
-          <p style={{ margin: '0 0 8px', color: '#6b7280', fontSize: 13 }}>{m.origin}</p>
-          <p style={{ margin: '0 0 12px' }}>{m.overview}</p>
+      <MethodBox color="#3b82f6">
+        {METHOD_INFO.map((m, i) => (
+          <div
+            key={m.key}
+            style={{
+              marginTop: i === 0 ? 0 : 28,
+              paddingTop: i === 0 ? 0 : 20,
+              borderTop: i === 0 ? undefined : '1px solid #cbd5e1',
+            }}
+          >
+            <h3 style={{ fontSize: 17, margin: '0 0 4px' }}>{m.name}</h3>
+            <p style={{ margin: '0 0 8px', color: '#6b7280', fontSize: 13 }}>{m.origin}</p>
+            <p style={{ margin: '0 0 12px' }}>{m.overview}</p>
 
-          <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>手順</h4>
-          <ol style={{ margin: '0 0 10px', paddingLeft: 22, lineHeight: 1.9 }}>
-            {m.steps.map((step, si) => (
-              <li key={si} style={{ marginBottom: 6 }}>
-                {step}
+            <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>手順</h4>
+            <ol style={{ margin: '0 0 10px', paddingLeft: 22, lineHeight: 1.9 }}>
+              {m.steps.map((step, si) => (
+                <li key={si} style={{ marginBottom: 6 }}>
+                  {step}
+                </li>
+              ))}
+            </ol>
+            <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6b7280' }}>{m.values}</p>
+
+            {m.derivation && (
+              <>
+                <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>{m.derivation.title}</h4>
+                <div style={{ margin: '0 0 12px' }}>{m.derivation.body}</div>
+              </>
+            )}
+
+            <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>特徴</h4>
+            <ul style={{ margin: 0, paddingLeft: 22, lineHeight: 1.7 }}>
+              <li>
+                <strong style={{ color: '#16a34a' }}>メリット：</strong> {m.pros}
               </li>
-            ))}
-          </ol>
-          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6b7280' }}>{m.values}</p>
-
-          {m.derivation && (
-            <>
-              <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>{m.derivation.title}</h4>
-              <div style={{ margin: '0 0 12px' }}>{m.derivation.body}</div>
-            </>
-          )}
-
-          <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>特徴</h4>
-          <ul style={{ margin: 0, paddingLeft: 22, lineHeight: 1.7 }}>
-            <li>
-              <strong style={{ color: '#16a34a' }}>メリット：</strong> {m.pros}
-            </li>
-            <li>
-              <strong style={{ color: '#dc2626' }}>デメリット：</strong> {m.cons}
-            </li>
-          </ul>
-        </div>
-      ))}
+              <li>
+                <strong style={{ color: '#dc2626' }}>デメリット：</strong> {m.cons}
+              </li>
+            </ul>
+          </div>
+        ))}
+      </MethodBox>
 
       <h3 style={{ fontSize: 17, marginTop: 32 }}>3手法の比較</h3>
       <div style={{ overflowX: 'auto', margin: '8px 0 16px' }}>
@@ -341,26 +373,48 @@ export function OptimizeStep({ landscape, optimalCutValue }: OptimizeStepProps) 
         </table>
       </div>
       <p style={{ fontSize: 12, color: '#6b7280' }}>
-        実際にどの手法がどう収束するかは、下のヒートマップとボタンで自分の目で比較できます。
+        実際にどの手法がどう収束するかは、下のスライダーと3D曲面、ボタンで自分の目で比較できます。
       </p>
 
       {landscape ? (
         <>
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <Heatmap2D
-              landscape={landscape}
-              startPoint={startPoint}
-              onSelectPoint={(gamma, beta) => setStartPoint({ gamma, beta })}
-              trajectories={METHODS.filter((m) => trajectories[m.key].length > 0).map((m) => ({
-                label: m.label,
-                color: m.color,
-                points: trajectories[m.key],
-              }))}
+          <label style={{ display: 'block', margin: '16px 0' }}>
+            開始点 γ = {startPoint.gamma.toFixed(2)}
+            <input
+              type="range"
+              min={0}
+              max={Math.PI * 2}
+              step={0.01}
+              value={startPoint.gamma}
+              onChange={(e) => setStartPoint((p) => ({ ...p, gamma: Number(e.target.value) }))}
+              style={{ display: 'block', width: '100%', maxWidth: 400 }}
             />
-          </div>
+          </label>
+          <label style={{ display: 'block', margin: '16px 0' }}>
+            開始点 β = {startPoint.beta.toFixed(2)}
+            <input
+              type="range"
+              min={0}
+              max={Math.PI}
+              step={0.01}
+              value={startPoint.beta}
+              onChange={(e) => setStartPoint((p) => ({ ...p, beta: Number(e.target.value) }))}
+              style={{ display: 'block', width: '100%', maxWidth: 400 }}
+            />
+          </label>
+
+          <h4 style={{ fontSize: 14, margin: '0 0 6px', textAlign: 'center' }}>
+            3D曲面上の探索軌跡（⟨cut⟩={optimalCutValue}の高さの平面に投影）
+          </h4>
+          <Landscape3D
+            landscape={landscape}
+            maxCutValue={optimalCutValue}
+            trajectories={series}
+            currentPoint={startPoint}
+            currentValue={nearestGridValue(landscape, startPoint.gamma, startPoint.beta)}
+          />
           <p style={{ fontSize: 13, color: '#6b7280', textAlign: 'center' }}>
-            開始点（黒い輪）: γ={startPoint.gamma.toFixed(2)}, β={startPoint.beta.toFixed(2)}
-            （ヒートマップをクリックして変更）
+            黒い輪が開始点: γ={startPoint.gamma.toFixed(2)}, β={startPoint.beta.toFixed(2)}
           </p>
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>

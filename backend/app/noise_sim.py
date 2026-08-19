@@ -2,6 +2,7 @@ from qiskit import QuantumCircuit, transpile
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, depolarizing_error
 
+from .graph import Graph
 from .maxcut import cut_value_from_bitstring, expected_cut_value
 from .qaoa import build_p1_circuit, expected_cut_at
 
@@ -14,13 +15,14 @@ def build_noise_model(single_qubit_error: float, two_qubit_error: float) -> Nois
 
 
 def run_noisy_p1(
+    graph: Graph,
     gamma: float,
     beta: float,
     single_qubit_error: float,
     two_qubit_error: float,
     shots: int = 4096,
 ):
-    qc = build_p1_circuit(gamma, beta)
+    qc = build_p1_circuit(graph, gamma, beta)
     qc.measure_all()
 
     noise_model = build_noise_model(single_qubit_error, two_qubit_error)
@@ -35,15 +37,15 @@ def run_noisy_p1(
         {
             "bitstring": bitstring,
             "probability": count / shots,
-            "cutValue": cut_value_from_bitstring(bitstring),
+            "cutValue": cut_value_from_bitstring(graph, bitstring),
         }
         for bitstring, count in counts.items()
     ]
     distribution.sort(key=lambda entry: entry["bitstring"])
 
     probabilities = {bitstring: count / shots for bitstring, count in counts.items()}
-    noisy_expected_cut = expected_cut_value(probabilities)
-    ideal_expected_cut = expected_cut_at(gamma, beta)
+    noisy_expected_cut = expected_cut_value(graph, probabilities)
+    ideal_expected_cut = expected_cut_at(graph, gamma, beta)
 
     return {
         "gamma": gamma,
