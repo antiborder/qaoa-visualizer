@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ConceptsPage } from './ConceptsPage'
 import { buildCostUnitarySteps } from './CostUnitaryWalkthrough'
 import { DepthScanStep } from './DepthScanStep'
@@ -23,6 +23,9 @@ function App() {
   const [landscape, setLandscape] = useState<LandscapeResult | null>(null)
   const [partitionIndex, setPartitionIndex] = useState(0)
   const [currentStep, setCurrentStep] = useState(0)
+  // Always holds the most recently constructed `steps` array (assigned
+  // below, after `steps` is built) - see jumpToChapter's comment.
+  const stepsRef = useRef<WalkthroughStep[]>([])
   // Shared "layer 1" parameters: Step 5 (cost-only) only uses gamma1, but
   // Step 6 and Step 9 both build on the exact same first cost+mixer layer,
   // so all three steps read/write this one pair rather than keeping their
@@ -91,7 +94,22 @@ function App() {
   const partition = optimal.partitions[partitionIndex]
   const currentGraphLabel = graphs.find((g) => g.id === graphId)?.label ?? graphId
 
-  // Steps 1-4 (Step1Walkthrough.tsx) and 5-11 (CostUnitaryWalkthrough.tsx)
+  // Lets Step 1's "what you can learn here" list jump straight to a chapter
+  // by name, without hardcoding its array index (which would break the
+  // no-hardcoded-numbering design as soon as steps are inserted/reordered).
+  // jumpToChapter only reads stepsRef.current when actually called (a click,
+  // later), by which point this render's `steps` below has been assigned
+  // into it - the ref breaks the chicken-and-egg problem of needing the
+  // full array to resolve a jump target while still constructing that array.
+  const jumpToChapter = (chapter: string) => {
+    const index = stepsRef.current.findIndex((s) => s.chapter === chapter)
+    if (index >= 0) {
+      setCurrentStep(index)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  // Steps 1-5 (Step1Walkthrough.tsx) and onward (CostUnitaryWalkthrough.tsx)
   // are broken into small, one-idea-per-step screens. The remaining chapters
   // are still single-step "chapters" for now - each renders its existing,
   // unmodified component as one big step. Splitting those the same way is
@@ -108,6 +126,7 @@ function App() {
       partitionIndex,
       onSelectPartition: setPartitionIndex,
       currentGraphLabel,
+      onJumpToChapter: jumpToChapter,
     }),
     ...buildCostUnitarySteps({
       graphId,
@@ -176,6 +195,7 @@ function App() {
       misOptimal,
     }),
   ]
+  stepsRef.current = steps
 
   return (
     <main style={{ maxWidth: 800, margin: '0 auto', fontFamily: 'sans-serif', padding: '0 16px' }}>

@@ -30,7 +30,6 @@ interface MISArgs {
 const CH = '別の組合せ最適化問題への一般化 — 最大独立集合'
 const SEC_GRAPH_SELECT = 'Max-Cut以外の問題もやってみよう'
 const SEC_MIS_DEF = '最大独立集合とは'
-const SEC_OPTIMAL_CHECK = '各最適解の確認'
 const SEC_HAMILTONIAN = 'グラフを表現するハミルトニアンの構築'
 const SEC_UNITARY = 'ユニタリ演算子の構築'
 const SEC_CIRCUIT_DESIGN = '量子回路の設計'
@@ -112,47 +111,6 @@ function MISDefinitionGallery({
         ))}
       </div>
       <MISGraphView graph={graph} selection={misOptimal.selections[selectionIndex]} />
-    </>
-  )
-}
-
-// Step "各最適解の確認"'s cycle-through-optimal-solutions UI. selectionIndex
-// is purely local display state (which of the tied-optimal selections is
-// currently shown), so it lives here rather than being lifted to App.tsx.
-function MISOptimalCheckStep({
-  graph,
-  misOptimal,
-}: {
-  graph: GraphData
-  misOptimal: MISOptimalResult | null
-}) {
-  const [selectionIndex, setSelectionIndex] = useState(0)
-
-  useEffect(() => {
-    setSelectionIndex(0)
-  }, [misOptimal])
-
-  if (!misOptimal) {
-    return <p>計算中...</p>
-  }
-
-  return (
-    <>
-      <MISGraphView graph={graph} selection={misOptimal.selections[selectionIndex]} />
-      <ul style={{ paddingLeft: 22, lineHeight: 1.9 }}>
-        <li>
-          最大独立集合のサイズ: <strong>{misOptimal.size}</strong>
-        </li>
-        <li>
-          同点で最適な解: {misOptimal.selections.length}通り中 {selectionIndex + 1}通り目を表示中
-          <button
-            onClick={() => setSelectionIndex((i) => (i + 1) % misOptimal.selections.length)}
-            style={{ marginLeft: 8 }}
-          >
-            次の最適解を見る
-          </button>
-        </li>
-      </ul>
     </>
   )
 }
@@ -287,7 +245,7 @@ export function buildMISSteps({ graphs, graphId, onSelectGraph, graph, misOptima
             グラフを選び直せます。
           </p>
           <GraphTypePicker graphs={graphs} graphId={graphId} onSelect={onSelectGraph} />
-          <GraphView graph={graph} />
+          <GraphView graph={graph} showLegend={false} />
         </>
       ),
     },
@@ -307,17 +265,19 @@ export function buildMISSteps({ graphs, graphId, onSelectGraph, graph, misOptima
             最大のものが<strong>最大独立集合</strong>です。下のアイコンをクリックすると、
             このグラフに対する実際の最大独立集合（同点で最適なもの）を見比べられます。
           </p>
+          {misOptimal && (
+            <ul style={{ paddingLeft: 22, lineHeight: 1.9 }}>
+              <li>
+                最大独立集合のサイズ: <strong>{misOptimal.size}</strong>
+              </li>
+              <li>
+                同点で最適な解: <strong>{misOptimal.selections.length}</strong>通り
+              </li>
+            </ul>
+          )}
           <MISDefinitionGallery graph={graph} misOptimal={misOptimal} />
         </>
       ),
-    },
-
-    // --- Step: 各最適解の確認 ---
-    {
-      chapter: CH,
-      section: SEC_OPTIMAL_CHECK,
-      title: '',
-      content: <MISOptimalCheckStep graph={graph} misOptimal={misOptimal} />,
     },
 
     // --- Step: グラフを表現するハミルトニアンの構築 ---
@@ -333,6 +293,35 @@ export function buildMISSteps({ graphs, graphId, onSelectGraph, graph, misOptima
             使うと、MISの目的は次の最大化として書けます。
           </p>
           <FormulaBlock>目的関数 = Σᵢ xᵢ − A・Σ<sub>(i,j)∈E</sub> xᵢxⱼ</FormulaBlock>
+          <p>
+            xᵢ∈{'{0,1}'}という2値変数についての2次式を、制約なしで最大化・最小化する
+            ——この定式化の形を<strong>QUBO</strong>（Quadratic Unconstrained Binary
+            Optimization：制約なし2次2値最適化）と呼びます。量子コンピュータ（や
+            量子アニーラ）で組合せ最適化問題を扱う際の標準的な出発点で、MISに限らず
+            多くの問題が、まず制約をペナルティ項として目的関数に埋め込むことで
+            この形に変換されます。ここでも「辺で結ばれた2ノードを同時に選ばない」
+            という制約を、直接の制約としてではなく、破ったときに減点する罰則項として
+            表現しています。
+          </p>
+
+          <Callout label="補足：QUBOの一般形">
+            <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+              QUBOは一般に、2値ベクトルx=(x₁,…,xₙ)∈{'{0,1}'}ⁿと実行列Q（対称、または
+              上三角）を使って、次の形の関数を最小化（または最大化）する問題として
+              定義されます。
+            </p>
+            <FormulaBlock>
+              f(x) = xᵀQx = Σᵢ Qᵢᵢxᵢ + Σ<sub>i&lt;j</sub> Qᵢⱼxᵢxⱼ
+            </FormulaBlock>
+            <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+              xᵢ∈{'{0,1}'}ではxᵢ²=xᵢが成り立つので、対角成分Qᵢᵢxᵢ²は自動的に1次項
+              Qᵢᵢxᵢに潰れます——つまりQUBOは「1次項＋2次項」の多項式であり、2値変数の
+              最適化問題としては最も一般的な、次数が2までの形です。このアプリの
+              目的関数（1次項Σxᵢと2次項−AΣxᵢxⱼ）も、まさにこのxᵀQxの特別な場合に
+              あたります。
+            </p>
+          </Callout>
+
           <p>
             第1項はできるだけ多くのノードを選びたいという目的、第2項は辺で結ばれた
             2ノードを同時に選ぶたびにA点のペナルティを科す罰則項です（このアプリでは

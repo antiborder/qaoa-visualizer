@@ -31,12 +31,6 @@ function MISLegend() {
         />
         選択されていないノード
       </span>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <svg width="24" height="12">
-          <line x1={0} y1={6} x2={24} y2={6} stroke="#9ca3af" strokeWidth={2} />
-        </svg>
-        辺
-      </span>
     </div>
   )
 }

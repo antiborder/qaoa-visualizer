@@ -14,19 +14,42 @@ interface Step1Args {
   partitionIndex: number
   onSelectPartition: (index: number) => void
   currentGraphLabel: string
+  onJumpToChapter: (chapter: string) => void
 }
 
-// Chapter 1 (progress-bar pill 1): just the welcome screen, its own pill.
+// Chapter 1 (progress-bar pill 1): welcome + the high-level "what is QAOA"
+// orientation both live in this pill, before any Max-Cut-specific content.
 const CH_INTRO = 'はじめに'
-// Chapter 2 (pill 2): Steps 2, 3, 4 all live inside this one pill together -
+// Chapter 2 (pill 2): Steps 3, 4, 5 all live inside this one pill together -
 // each Step is exactly one slide (one array entry), the pill just fills in
 // three increments instead of one.
 const CH_MAXCUT_BASICS = 'Max-Cut問題の基礎'
 
 const SEC_WELCOME = 'はじめに'
-const SEC_GRAPH_BASICS = 'グラフの基礎'
+const SEC_GRAPH_BASICS = 'グラフの選定'
+const SEC_WHAT_IS_QAOA = 'QAOAとは'
 const SEC_MAXCUT = 'Max-Cut問題'
 const SEC_BRUTE_FORCE = '総当たりでの答え'
+
+// The chapters Step 1's "このアプリで学べること" list can jump to. Chapter
+// names here are plain string literals matching the (unexported) chapter
+// constants each Walkthrough file defines for itself - the same literal
+// values App.tsx already uses inline for the chapters that aren't split
+// into their own file (パラメータランドスケープ, 古典最適化ループ, etc.).
+const TOC_ITEMS: { chapter: string; label: string }[] = [
+  { chapter: CH_MAXCUT_BASICS, label: 'グラフとMax-Cut問題の基礎を学ぶ' },
+  { chapter: 'コストユニタリ', label: 'コストユニタリで問題を量子状態の位相に変換する' },
+  { chapter: 'ミキサーユニタリ', label: 'ミキサーユニタリで位相を測定確率に変換する' },
+  { chapter: 'パラメータランドスケープ', label: 'パラメータ(γ,β)と期待カット値の関係を3D曲面で見る' },
+  { chapter: '古典最適化ループ', label: '古典最適化アルゴリズムでパラメータを探索する' },
+  { chapter: '2層目への拡張', label: '層を重ねてさらに良い解に近づける' },
+  { chapter: '層数pへの一般化', label: '層数pを増やす効果と近似比を測定する' },
+  { chapter: 'ノイズありシミュレーションとの比較', label: '実機ノイズが計算結果に与える影響を見る' },
+  {
+    chapter: '別の組合せ最適化問題への一般化 — 最大独立集合',
+    label: '同じ手法を別の問題（最大独立集合）に一般化する',
+  },
+]
 
 // A reusable "small icon row + big picture below" gallery: the same visual
 // pattern is deliberately reused twice (once in SEC_MAXCUT to illustrate
@@ -58,7 +81,7 @@ function SolutionGallery({
   )
 }
 
-// Steps 1-4 cover what used to be a single monolithic "Step 1: Max-Cut
+// Steps 1-5 cover what used to be a single monolithic "Step 1: Max-Cut
 // 問題設定" page. Each Step here is exactly one slide (one array entry) -
 // Steps 2/3/4 stack several pieces of content into that one slide, in a
 // fixed order, rather than being split into further sub-slides. Steps 2/3/4
@@ -77,6 +100,7 @@ export function buildStep1Steps({
   partitionIndex,
   onSelectPartition,
   currentGraphLabel,
+  onJumpToChapter,
 }: Step1Args): WalkthroughStep[] {
   return [
     {
@@ -93,11 +117,67 @@ export function buildStep1Steps({
             古典最適化ループ、層数pを増やす効果、実機ノイズの影響までを、実際に動く回路とグラフで
             1つずつ確認していきます。
           </p>
+
+          <h3 style={{ fontSize: 17 }}>このアプリで学べること</h3>
+          <ul style={{ paddingLeft: 22, lineHeight: 2.1 }}>
+            {TOC_ITEMS.map((item) => (
+              <li key={item.chapter}>
+                <button
+                  onClick={() => onJumpToChapter(item.chapter)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: '#4f8cff',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    textAlign: 'left',
+                  }}
+                >
+                  {item.label}
+                </button>
+              </li>
+            ))}
+          </ul>
         </>
       ),
     },
 
-    // --- Step 2: グラフの基礎（1スライド） ---
+    // --- Step 2: QAOAとは（1スライド） ---
+    {
+      chapter: CH_INTRO,
+      section: SEC_WHAT_IS_QAOA,
+      title: '',
+      content: (
+        <>
+          <h3 style={{ fontSize: 17 }}>QAOAとは</h3>
+          <p>
+            <strong>QAOA</strong>（Quantum Approximate Optimization Algorithm、量子近似最適化
+            アルゴリズム）は、Max-Cutのような組合せ最適化問題の、なるべく良い解を近似的に
+            見つけるための量子アルゴリズムです。真の最適解を確実に見つける保証はありません
+            ——限られた回路の深さやショット数の中で、できるだけ良い解に確率的に近づけていく
+            ヒューリスティック（経験的な手法）です。
+          </p>
+          <p>
+            大まかな流れはこうです。まず解きたい問題（後のStepで見るMax-Cut）を量子力学の
+            言葉——ハミルトニアン——に翻訳します。次に、パラメータγ・βで調整できる量子回路
+            （コストユニタリ・ミキサーユニタリ）を組み、その回路を実行して測定することで、
+            良い解ほど測定されやすい確率分布を作ります。最後に、古典コンピュータ側の最適化
+            アルゴリズムがγ・βを調整し、この確率の偏りをさらに良くしていきます——量子回路と
+            古典コンピュータが手を取り合って解を探す、<strong>ハイブリッドなアルゴリズム</strong>
+            です。
+          </p>
+          <p>
+            この後のStepでは、まずMax-Cut問題そのものを定義し、それを量子力学の言葉に翻訳する
+            ところから、実際の回路・パラメータ探索・層数を増やす効果・ノイズの影響まで、
+            この流れを1つずつ実際に動かしながら確認していきます。
+          </p>
+        </>
+      ),
+    },
+
+    // --- Step 3: グラフの基礎（1スライド） ---
     {
       chapter: CH_MAXCUT_BASICS,
       section: SEC_GRAPH_BASICS,
@@ -118,7 +198,7 @@ export function buildStep1Steps({
       ),
     },
 
-    // --- Step 3: Max-Cut問題（1スライド） ---
+    // --- Step 4: Max-Cut問題（1スライド） ---
     {
       chapter: CH_MAXCUT_BASICS,
       section: SEC_MAXCUT,
@@ -157,7 +237,7 @@ export function buildStep1Steps({
       ),
     },
 
-    // --- Step 4: 総当たりでの答え（1スライド） ---
+    // --- Step 5: 総当たりでの答え（1スライド） ---
     {
       chapter: CH_MAXCUT_BASICS,
       section: SEC_BRUTE_FORCE,
