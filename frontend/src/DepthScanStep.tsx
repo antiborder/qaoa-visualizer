@@ -22,16 +22,15 @@ export function DepthScanStep({ graphId }: DepthScanStepProps) {
 
   return (
     <section style={{ marginTop: 48 }}>
-      <h1>Step 7: 層数pへの一般化</h1>
       <p>
-        Step 6では層を2つに増やす（p=2）ことで、期待カット値をさらに伸ばせることを
-        確認しました。この考え方を一般化し、層数pを1からさらに増やしていくと
+        2層目への拡張のStepでは層を2つに増やす（p=2）ことで、期待カット値をさらに伸ばせる
+        ことを確認しました。この考え方を一般化し、層数pを1からさらに増やしていくと
         近似比がどう変化するかを見てみます。
       </p>
       <Callout label="補足：p（層数）とは">
         <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
           「コストユニタリ→ミキサーユニタリ」のペアを何回繰り返すかを表す層数です。
-          Step 6ではp=2に拡張しましたが、ここではさらに一般のp層に広げます。
+          2層目への拡張のStepではp=2に拡張しましたが、ここではさらに一般のp層に広げます。
         </p>
       </Callout>
       <p>
@@ -80,7 +79,8 @@ export function DepthScanStep({ graphId }: DepthScanStepProps) {
           <Callout label="補足：勾配分散の計算方法">
             <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
               γ・βをランダムに選んだN=40個の点θ₁,…,θ₄₀それぞれで、1層目のγ（γ₁）に
-              対する厳密な勾配∂⟨cut⟩/∂γ₁を、Step 5の勾配法と同じパラメータシフト則
+              対する厳密な勾配∂⟨cut⟩/∂γ₁を、古典最適化ループのStepの勾配法と同じ
+              パラメータシフト則
               （γ₁が入っている各RZZゲートを±π/2シフトして評価し、差を足し合わせる）で
               計算します。
             </p>
@@ -106,7 +106,7 @@ export function DepthScanStep({ graphId }: DepthScanStepProps) {
 
           <Callout label="補足：分散が小さいと何が悪いのか">
             <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
-              <strong>これは悪いニュースです。</strong>Step 5のCOBYLA・勾配法のような
+              <strong>これは悪いニュースです。</strong>古典最適化ループのStepのCOBYLA・勾配法のような
               古典最適化器は、出発点の近くで「どちらに動かせば⟨cut⟩が増えるか」という
               手がかり（勾配、または少なくとも近くの点とのわずかな差）を頼りに探索します。
               勾配がほぼ全域で0に近いと、ランダムな出発点からはこの手がかりが得られず、
@@ -172,7 +172,7 @@ export function DepthScanStep({ graphId }: DepthScanStepProps) {
             </li>
             <li>
               量子ビット数の多いグラフに変えると、より明確な傾向が観測できると予想される——
-              Step 1のグラフ選択で他のグラフに変えて比べてみてください
+              最初のグラフ選択で他のグラフに変えて比べてみてください
             </li>
           </ul>
 

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 export interface GraphNode {
   id: number
   x: number
@@ -141,4 +143,21 @@ export interface MISDepthScanResult {
   optimalSize: number
   bestExpectedObjectiveValues: number[]
   approximationRatios: number[]
+}
+
+// One atomic screen in the paged walkthrough. Three levels of grouping:
+//   chapter  - which pill in SegmentedProgressBar this step belongs to
+//              (coarsest; several numbered sections can share one chapter,
+//              e.g. Step 2/3/4 all live inside one chapter/pill)
+//   section  - the numbered "Step N: section" unit (its number is computed
+//              from its position among unique sections in Walkthrough.tsx,
+//              never hardcoded)
+//   title    - this atomic step's own heading within its section
+// A section with only one step (Steps 5-12, for now) still renders
+// correctly, it just fills its whole chapter/pill in a single Next click.
+export interface WalkthroughStep {
+  chapter: string
+  section: string
+  title: string
+  content: ReactNode
 }

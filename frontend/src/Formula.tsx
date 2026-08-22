@@ -69,7 +69,6 @@ export function Callout({ label, children }: { label: string; children: ReactNod
           fontSize: 13,
           margin: '0 0 10px',
           color: '#64748b',
-          textTransform: 'uppercase',
           letterSpacing: 0.5,
         }}
       >

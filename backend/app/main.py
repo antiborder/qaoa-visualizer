@@ -1,6 +1,7 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from .circuit_diagram import DIAGRAM_BUILDERS, render_circuit_png
 from .graph import DEFAULT_GRAPH_ID, GRAPHS, Graph
 from .maxcut import (
     GW_APPROXIMATION_RATIO,
@@ -224,3 +225,11 @@ def get_mis_p1(gamma: float, beta: float, graph: Graph = Depends(_resolve_graph)
 @app.get("/api/mis/depth-scan")
 def get_mis_depth_scan(graph: Graph = Depends(_resolve_graph)):
     return compute_mis_depth_scan(graph, max_p=4, restarts=12, cobyla_maxiter=120)
+
+
+@app.get("/api/circuit-diagram")
+def get_circuit_diagram(kind: str, graph: Graph = Depends(_resolve_graph)):
+    if kind not in DIAGRAM_BUILDERS:
+        raise HTTPException(status_code=400, detail=f"unknown diagram kind: {kind}")
+    png_bytes = render_circuit_png(graph, kind)
+    return Response(content=png_bytes, media_type="image/png")

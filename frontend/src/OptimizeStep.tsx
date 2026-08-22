@@ -17,7 +17,7 @@ interface MethodInfo {
   key: OptimizerMethod
   name: string
   origin: string
-  overview: string
+  overview: ReactNode
   steps: ReactNode[]
   values: string
   derivation?: { title: string; body: ReactNode }
@@ -37,8 +37,12 @@ const METHOD_INFO: MethodInfo[] = [
     key: 'cobyla',
     name: 'COBYLA',
     origin: 'Constrained Optimization BY Linear Approximations（1994年, M.J.D. Powell）',
-    overview:
-      '関数の値だけを使い、局所的な平面（1次関数）で近似しながら少しずつ良い方向へ進む、勾配を使わない手法です。探索する変数はx=(γ,β)という2次元のベクトルで、現在の点をx_k=(γ_k,β_k)と書きます。',
+    overview: (
+      <>
+        関数の値だけを使い、局所的な平面（1次関数）で近似しながら少しずつ良い方向へ進む、勾配を使わない手法です。探索する変数はx=(γ,β)という2次元のベクトルで、現在の点をx
+        <sub>k</sub>=(γ<sub>k</sub>,β<sub>k</sub>)と書きます。
+      </>
+    ),
     steps: [
       <>
         現在の点x<sub>k</sub>と、そこからγ方向・β方向にそれぞれ半径ρ（ロー、探索半径。
@@ -142,8 +146,8 @@ const METHOD_INFO: MethodInfo[] = [
           </FormulaBlock>
           <p style={{ margin: '10px 0 8px' }}>
             β成分についても分母がΔ<sub>k</sub><sup>β</sup>になるだけで同じ形です。仮に真の勾配が
-            g=(g_γ,g_β)=(3,−2)だったとして（本来は未知の値ですが、推定が機能するか検証するために
-            ここだけ知っているとします）、Δ_kが取りうる4パターンそれぞれでĝ_kを計算してみます。
+            g=(g<sub>γ</sub>,g<sub>β</sub>)=(3,−2)だったとして（本来は未知の値ですが、推定が機能するか検証するために
+            ここだけ知っているとします）、Δ<sub>k</sub>が取りうる4パターンそれぞれでĝ<sub>k</sub>を計算してみます。
           </p>
           <div style={{ overflowX: 'auto', margin: '8px 0' }}>
             <table style={{ borderCollapse: 'collapse', fontSize: 13, minWidth: 380 }}>
@@ -182,10 +186,10 @@ const METHOD_INFO: MethodInfo[] = [
             </table>
           </div>
           <p style={{ margin: '8px 0 0' }}>
-            4通りのĝ_kは(1,1)や(5,−5)など、どれも真の値(3,−2)からかけ離れています——1回1回の推定は
+            4通りのĝ<sub>k</sub>は(1,1)や(5,−5)など、どれも真の値(3,−2)からかけ離れています——1回1回の推定は
             ノイズだらけです。しかし4パターンは等確率（各25%）で起こるため、平均を取ると
             γ成分は(1+5+5+1)/4=3、β成分は(1−5−5+1)/4=−2と、真の勾配にぴったり一致します。
-            Step 5でa_kが反復とともに小さくなっていくのは、このノイズを均しながら少しずつ
+            a<sub>k</sub>が反復とともに小さくなっていくのは、このノイズを均しながら少しずつ
             真の勾配の方向へ収束させていくためです。
           </p>
         </>
@@ -283,7 +287,13 @@ export function OptimizeStep({ graphId, landscape, optimalCutValue }: OptimizeSt
 
   return (
     <section style={{ marginTop: 48, marginBottom: 64 }}>
-      <h1>Step 5: 古典最適化ループ</h1>
+      <p>
+        コストユニタリのStepで触れたとおり、γ・βは最初から分かっているわけではなく、
+        それ自体を探索的に決める必要があります。この探索の1手ごとに、候補となる
+        (γ,β)で「回路を構築→実行→測定」の一連の流れをあらためて行い、そこから
+        期待カット値⟨cut⟩（や勾配）を計算し直します——つまり探索の反復回数だけ、
+        この一連の流れを繰り返すことになります。
+      </p>
       <p>
         下のスライダーで開始点(γ,β)を選び、3つの古典最適化アルゴリズムに
         同じ開始点から探索させて比較します。COBYLA・SPSA・勾配法（パラメータシフト則、
@@ -291,87 +301,6 @@ export function OptimizeStep({ graphId, landscape, optimalCutValue }: OptimizeSt
         (γ,β)空間を探索し、量子回路はその都度Qiskitで実行されます。
       </p>
 
-      <MethodBox color="#3b82f6">
-        {METHOD_INFO.map((m, i) => (
-          <div
-            key={m.key}
-            style={{
-              marginTop: i === 0 ? 0 : 28,
-              paddingTop: i === 0 ? 0 : 20,
-              borderTop: i === 0 ? undefined : '1px solid #cbd5e1',
-            }}
-          >
-            <h3 style={{ fontSize: 17, margin: '0 0 4px' }}>{m.name}</h3>
-            <p style={{ margin: '0 0 8px', color: '#6b7280', fontSize: 13 }}>{m.origin}</p>
-            <p style={{ margin: '0 0 12px' }}>{m.overview}</p>
-
-            <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>手順</h4>
-            <ol style={{ margin: '0 0 10px', paddingLeft: 22, lineHeight: 1.9 }}>
-              {m.steps.map((step, si) => (
-                <li key={si} style={{ marginBottom: 6 }}>
-                  {step}
-                </li>
-              ))}
-            </ol>
-            <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6b7280' }}>{m.values}</p>
-
-            {m.derivation && (
-              <>
-                <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>{m.derivation.title}</h4>
-                <div style={{ margin: '0 0 12px' }}>{m.derivation.body}</div>
-              </>
-            )}
-
-            <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>特徴</h4>
-            <ul style={{ margin: 0, paddingLeft: 22, lineHeight: 1.7 }}>
-              <li>
-                <strong style={{ color: '#16a34a' }}>メリット：</strong> {m.pros}
-              </li>
-              <li>
-                <strong style={{ color: '#dc2626' }}>デメリット：</strong> {m.cons}
-              </li>
-            </ul>
-          </div>
-        ))}
-      </MethodBox>
-
-      <h3 style={{ fontSize: 17, marginTop: 32 }}>3手法の比較</h3>
-      <div style={{ overflowX: 'auto', margin: '8px 0 16px' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13, minWidth: 500 }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid #374151' }}>
-              <th style={{ textAlign: 'left', padding: '6px 8px' }}></th>
-              <th style={{ textAlign: 'left', padding: '6px 8px' }}>COBYLA</th>
-              <th style={{ textAlign: 'left', padding: '6px 8px' }}>SPSA</th>
-              <th style={{ textAlign: 'left', padding: '6px 8px' }}>勾配法</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              ['分類', '微分不要（線形近似）', '確率的勾配近似', '厳密な解析的勾配'],
-              ['1反復の評価回数', '可変（単体サイズに依存）', '常に2回', 'パラメータ数に比例（今回22回）'],
-              ['収束の滑らかさ', '中程度（やや振動）', '不安定・ジグザグ', '最も滑らか'],
-              ['実機ノイズへの頑健性', '中程度', '高い', '低い（多ショットが必要）'],
-              ['高次元（大きいp）への適性', '苦手', '得意（次元非依存）', '苦手（線形に悪化）'],
-            ].map((row, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                {row.map((cell, j) => (
-                  <td
-                    key={j}
-                    style={{
-                      padding: '6px 8px',
-                      fontWeight: j === 0 ? 600 : 400,
-                      color: j === 0 ? '#374151' : '#4b5563',
-                    }}
-                  >
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
       <p style={{ fontSize: 12, color: '#6b7280' }}>
         実際にどの手法がどう収束するかは、下のスライダーと3D曲面、ボタンで自分の目で比較できます。
       </p>
@@ -442,6 +371,89 @@ export function OptimizeStep({ graphId, landscape, optimalCutValue }: OptimizeSt
       ) : (
         <p>ランドスケープ計算中...</p>
       )}
+
+<h3 style={{ fontSize: 17, marginTop: 32 }}>3手法の比較</h3>
+      <div style={{ overflowX: 'auto', margin: '8px 0 16px' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13, minWidth: 500 }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #374151' }}>
+              <th style={{ textAlign: 'left', padding: '6px 8px' }}></th>
+              <th style={{ textAlign: 'left', padding: '6px 8px' }}>COBYLA</th>
+              <th style={{ textAlign: 'left', padding: '6px 8px' }}>SPSA</th>
+              <th style={{ textAlign: 'left', padding: '6px 8px' }}>勾配法</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['分類', '微分不要（線形近似）', '確率的勾配近似', '厳密な解析的勾配'],
+              ['1反復の評価回数', '可変（単体サイズに依存）', '常に2回', 'パラメータ数に比例（今回22回）'],
+              ['収束の滑らかさ', '中程度（やや振動）', '不安定・ジグザグ', '最も滑らか'],
+              ['実機ノイズへの頑健性', '中程度', '高い', '低い（多ショットが必要）'],
+              ['高次元（大きいp）への適性', '苦手', '得意（次元非依存）', '苦手（線形に悪化）'],
+            ].map((row, i) => (
+              <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                {row.map((cell, j) => (
+                  <td
+                    key={j}
+                    style={{
+                      padding: '6px 8px',
+                      fontWeight: j === 0 ? 600 : 400,
+                      color: j === 0 ? '#374151' : '#4b5563',
+                    }}
+                  >
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+
+      <MethodBox color="#3b82f6">
+        {METHOD_INFO.map((m, i) => (
+          <div
+            key={m.key}
+            style={{
+              marginTop: i === 0 ? 0 : 28,
+              paddingTop: i === 0 ? 0 : 20,
+              borderTop: i === 0 ? undefined : '1px solid #cbd5e1',
+            }}
+          >
+            <h3 style={{ fontSize: 17, margin: '0 0 4px' }}>{m.name}</h3>
+            <p style={{ margin: '0 0 8px', color: '#6b7280', fontSize: 13 }}>{m.origin}</p>
+            <p style={{ margin: '0 0 12px' }}>{m.overview}</p>
+
+            <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>手順</h4>
+            <ol style={{ margin: '0 0 10px', paddingLeft: 22, lineHeight: 1.9 }}>
+              {m.steps.map((step, si) => (
+                <li key={si} style={{ marginBottom: 6 }}>
+                  {step}
+                </li>
+              ))}
+            </ol>
+            <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6b7280' }}>{m.values}</p>
+
+            {m.derivation && (
+              <>
+                <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>{m.derivation.title}</h4>
+                <div style={{ margin: '0 0 12px' }}>{m.derivation.body}</div>
+              </>
+            )}
+
+            <h4 style={{ fontSize: 14, margin: '0 0 6px' }}>特徴</h4>
+            <ul style={{ margin: 0, paddingLeft: 22, lineHeight: 1.7 }}>
+              <li>
+                <strong style={{ color: '#16a34a' }}>メリット：</strong> {m.pros}
+              </li>
+              <li>
+                <strong style={{ color: '#dc2626' }}>デメリット：</strong> {m.cons}
+              </li>
+            </ul>
+          </div>
+        ))}
+      </MethodBox>
     </section>
   )
 }

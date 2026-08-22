@@ -3,3 +3,5 @@ uvicorn[standard]
 qiskit
 qiskit-aer
 numpy
+matplotlib
+pylatexenc

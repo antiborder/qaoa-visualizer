@@ -3,6 +3,7 @@ import type { GraphData, MISSelectionEntry } from './types'
 interface MISGraphViewProps {
   graph: GraphData
   selection: MISSelectionEntry[]
+  showLegend?: boolean
 }
 
 function MISLegend() {
@@ -32,21 +33,15 @@ function MISLegend() {
       </span>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         <svg width="24" height="12">
-          <line x1={0} y1={6} x2={24} y2={6} stroke="#ef4444" strokeWidth={3} />
-        </svg>
-        違反した辺（両端が選択され、独立集合の条件に反する）
-      </span>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <svg width="24" height="12">
           <line x1={0} y1={6} x2={24} y2={6} stroke="#9ca3af" strokeWidth={2} />
         </svg>
-        違反していない辺
+        辺
       </span>
     </div>
   )
 }
 
-export function MISGraphView({ graph, selection }: MISGraphViewProps) {
+export function MISGraphView({ graph, selection, showLegend = true }: MISGraphViewProps) {
   const selectedByNode = new Map(selection.map((s) => [s.node, s.selected]))
   const positionByNode = new Map(graph.nodes.map((n) => [n.id, { x: n.x, y: n.y }]))
 
@@ -91,7 +86,7 @@ export function MISGraphView({ graph, selection }: MISGraphViewProps) {
           )
         })}
       </svg>
-      <MISLegend />
+      {showLegend && <MISLegend />}
     </div>
   )
 }
