@@ -2,15 +2,16 @@ import { useEffect, useState } from 'react'
 import { BarChart } from './BarChart'
 import { Callout, Frac, FormulaBlock } from './Formula'
 import { ParameterPathChart } from './ParameterPathChart'
-import type { DepthScanResult } from './types'
+import type { DepthScanResult, Lang } from './types'
 
 const API_BASE = 'http://localhost:8000'
 
 interface DepthScanStepProps {
   graphId: string
+  lang: Lang
 }
 
-export function DepthScanStep({ graphId }: DepthScanStepProps) {
+export function DepthScanStep({ graphId, lang }: DepthScanStepProps) {
   const [result, setResult] = useState<DepthScanResult | null>(null)
 
   useEffect(() => {
@@ -22,135 +23,277 @@ export function DepthScanStep({ graphId }: DepthScanStepProps) {
 
   return (
     <section style={{ marginTop: 48 }}>
-      <p>
-        2層目への拡張のStepでは層を2つに増やす（p=2）ことで、期待カット値をさらに伸ばせる
-        ことを確認しました。この考え方を一般化し、層数pを1からさらに増やしていくと
-        近似比がどう変化するかを見てみます。
-      </p>
-      <Callout label="補足：p（層数）とは">
-        <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
-          「コストユニタリ→ミキサーユニタリ」のペアを何回繰り返すかを表す層数です。
-          2層目への拡張のStepではp=2に拡張しましたが、ここではさらに一般のp層に広げます。
-        </p>
-      </Callout>
-      <p>
-        pを増やす（p層に増やす）と断熱定理に沿った経路に近づき、理論上はより良い解に
-        収束しやすくなります（断熱定理とQAOAの関係は
-        <a href="#concepts">量子力学・QAOA用語集</a>で詳しく説明しています）。各pごとに
-        ランダムな初期値からCOBYLAで複数回最適化し、最良の近似比を記録します。
-      </p>
+      {lang === 'en' ? (
+        <>
+          <p>
+            In the Extending to a Second Layer Step, we confirmed that increasing to two layers
+            (p=2) pushes the expected cut value further. Let's generalize this idea and see how the
+            approximation ratio changes as we keep increasing the number of layers p beyond 1.
+          </p>
+          <Callout label="Note: what is p (the number of layers)?">
+            <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+              p is the number of times the "cost unitary → mixer unitary" pair is repeated. In the
+              Extending to a Second Layer Step we extended to p=2; here we generalize further to an
+              arbitrary p layers.
+            </p>
+          </Callout>
+          <p>
+            Increasing p brings the circuit closer to a path following the adiabatic theorem, which
+            in theory makes it easier to converge to a better solution (the relationship between the
+            adiabatic theorem and QAOA is explained in detail in the{' '}
+            <a href="#concepts">Quantum Mechanics & QAOA Glossary</a>). For each p, we run COBYLA
+            optimization multiple times from random initial values and record the best
+            approximation ratio.
+          </p>
+        </>
+      ) : (
+        <>
+          <p>
+            2層目への拡張のStepでは層を2つに増やす（p=2）ことで、期待カット値をさらに伸ばせる
+            ことを確認しました。この考え方を一般化し、層数pを1からさらに増やしていくと
+            近似比がどう変化するかを見てみます。
+          </p>
+          <Callout label="補足：p（層数）とは">
+            <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+              「コストユニタリ→ミキサーユニタリ」のペアを何回繰り返すかを表す層数です。
+              2層目への拡張のStepではp=2に拡張しましたが、ここではさらに一般のp層に広げます。
+            </p>
+          </Callout>
+          <p>
+            pを増やす（p層に増やす）と断熱定理に沿った経路に近づき、理論上はより良い解に
+            収束しやすくなります（断熱定理とQAOAの関係は
+            <a href="#concepts">量子力学・QAOA用語集</a>で詳しく説明しています）。各pごとに
+            ランダムな初期値からCOBYLAで複数回最適化し、最良の近似比を記録します。
+          </p>
+        </>
+      )}
 
       {result ? (
         <>
-          <h3 style={{ fontSize: 17 }}>測定結果</h3>
+          <h3 style={{ fontSize: 17 }}>{lang === 'en' ? 'Measured Results' : '測定結果'}</h3>
 
-          <h4 style={{ fontSize: 15, margin: '16px 0 4px' }}>近似比（最良解 / 真の最適値）</h4>
-          <Callout label="補足：近似比の計算方法">
-            <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
-              各pについて、γ・βをランダムに初期化した点からCOBYLAで最適化する試行を
-              R=5回繰り返し（乱数の初期値ごとに見つかる局所解が異なるため）、その中で
-              最も良かった期待カット値を採用します。それを総当たりで求めた真の最大
-              カット値で割ったものが近似比です。
-            </p>
-            <FormulaBlock>
-              近似比(p) ={' '}
-              <Frac
-                num={<>r=1,…,Rの中でのCOBYLA最適化後の期待カット値の最大値</>}
-                den={<>真の最大カット値</>}
-              />
-            </FormulaBlock>
-            <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
-              1に近いほど、その層数pで真の最適解にどれだけ近づけたかを表します。
-            </p>
-          </Callout>
+          <h4 style={{ fontSize: 15, margin: '16px 0 4px' }}>
+            {lang === 'en' ? 'Approximation ratio (best solution / true optimum)' : '近似比（最良解 / 真の最適値）'}
+          </h4>
+          {lang === 'en' ? (
+            <Callout label="Note: how the approximation ratio is computed">
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                For each p, we repeat COBYLA optimization from randomly initialized γ,β points R=5
+                times (since the local solution found differs by random seed), and take the best
+                expected cut value among them. Dividing that by the true maximum cut value (found by
+                brute force) gives the approximation ratio.
+              </p>
+              <FormulaBlock>
+                approximation ratio(p) ={' '}
+                <Frac
+                  num={<>max expected cut value after COBYLA optimization over r=1,…,R</>}
+                  den={<>true maximum cut value</>}
+                />
+              </FormulaBlock>
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                The closer to 1, the closer this number of layers p got to the true optimal
+                solution.
+              </p>
+            </Callout>
+          ) : (
+            <Callout label="補足：近似比の計算方法">
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                各pについて、γ・βをランダムに初期化した点からCOBYLAで最適化する試行を
+                R=5回繰り返し（乱数の初期値ごとに見つかる局所解が異なるため）、その中で
+                最も良かった期待カット値を採用します。それを総当たりで求めた真の最大
+                カット値で割ったものが近似比です。
+              </p>
+              <FormulaBlock>
+                近似比(p) ={' '}
+                <Frac
+                  num={<>r=1,…,Rの中でのCOBYLA最適化後の期待カット値の最大値</>}
+                  den={<>真の最大カット値</>}
+                />
+              </FormulaBlock>
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                1に近いほど、その層数pで真の最適解にどれだけ近づけたかを表します。
+              </p>
+            </Callout>
+          )}
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <BarChart
               labels={result.pValues.map((p) => `p=${p}`)}
               values={result.approximationRatios}
               color="#22c55e"
               yMax={1.05}
-              referenceLine={{ value: 1.0, label: '真の最適解' }}
+              referenceLine={{ value: 1.0, label: lang === 'en' ? 'True optimum' : '真の最適解' }}
             />
           </div>
 
           <h4 style={{ fontSize: 15, margin: '32px 0 4px' }}>
-            勾配分散 Var[∂⟨cut⟩/∂γ₁]（ランダム初期値40点）
+            {lang === 'en'
+              ? 'Gradient variance Var[∂⟨cut⟩/∂γ₁] (40 random initial points)'
+              : '勾配分散 Var[∂⟨cut⟩/∂γ₁]（ランダム初期値40点）'}
           </h4>
-          <Callout label="補足：勾配分散の計算方法">
-            <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
-              γ・βをランダムに選んだN=40個の点θ₁,…,θ₄₀それぞれで、1層目のγ（γ₁）に
-              対する厳密な勾配∂⟨cut⟩/∂γ₁を、古典最適化ループのStepの勾配法と同じ
-              パラメータシフト則
-              （γ₁が入っている各RZZゲートを±π/2シフトして評価し、差を足し合わせる）で
-              計算します。
-            </p>
-            <FormulaBlock>
-              g(θ) ={' '}
-              <Frac num="∂⟨cut⟩" den="∂γ₁" /> (θ) = Σ<sub>(i,j)∈E</sub>{' '}
-              [f(θ; γ₁の辺(i,j)を+π/2シフト) − f(θ; γ₁の辺(i,j)を−π/2シフト)]
-            </FormulaBlock>
-            <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
-              このN個の勾配値のばらつき（分散）を計算したものが勾配分散です。ḡはN個の
-              g(θₖ)の平均です。
-            </p>
-            <FormulaBlock>
-              勾配分散(p) = <Frac num="1" den="N" /> Σ<sub>k=1</sub>
-              <sup>N</sup> (g(θ<sub>k</sub>) − ḡ)²
-            </FormulaBlock>
-            <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
-              この分散が小さいほど、ランダムな点での勾配が軒並みほぼ0に近い——
-              「どちらに動かせば改善するか」という手がかりが薄れていく、バレンプラトー
-              （勾配消失）の兆候です。
-            </p>
-          </Callout>
+          {lang === 'en' ? (
+            <Callout label="Note: how the gradient variance is computed">
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                At each of N=40 randomly chosen points θ₁,…,θ₄₀ in (γ,β), we compute the exact
+                gradient ∂⟨cut⟩/∂γ₁ with respect to the first layer's γ (γ₁), using the same
+                parameter-shift rule as the gradient method in the Classical Optimization Loop Step
+                (shifting each RZZ gate carrying γ₁ by ±π/2, evaluating, and summing the
+                differences).
+              </p>
+              <FormulaBlock>
+                g(θ) ={' '}
+                <Frac num="∂⟨cut⟩" den="∂γ₁" /> (θ) = Σ<sub>(i,j)∈E</sub>{' '}
+                [f(θ; edge (i,j) of γ₁ shifted by +π/2) − f(θ; edge (i,j) of γ₁ shifted by −π/2)]
+              </FormulaBlock>
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                The gradient variance is the spread (variance) of these N gradient values. ḡ is the
+                average of the N values g(θₖ).
+              </p>
+              <FormulaBlock>
+                gradient variance(p) = <Frac num="1" den="N" /> Σ<sub>k=1</sub>
+                <sup>N</sup> (g(θ<sub>k</sub>) − ḡ)²
+              </FormulaBlock>
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                The smaller this variance, the closer the gradient at essentially every random point
+                is to 0 — a sign of a <strong>barren plateau</strong> (vanishing gradient), where the
+                clue of "which direction to move to improve" fades away.
+              </p>
+            </Callout>
+          ) : (
+            <Callout label="補足：勾配分散の計算方法">
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                γ・βをランダムに選んだN=40個の点θ₁,…,θ₄₀それぞれで、1層目のγ（γ₁）に
+                対する厳密な勾配∂⟨cut⟩/∂γ₁を、古典最適化ループのStepの勾配法と同じ
+                パラメータシフト則
+                （γ₁が入っている各RZZゲートを±π/2シフトして評価し、差を足し合わせる）で
+                計算します。
+              </p>
+              <FormulaBlock>
+                g(θ) ={' '}
+                <Frac num="∂⟨cut⟩" den="∂γ₁" /> (θ) = Σ<sub>(i,j)∈E</sub>{' '}
+                [f(θ; γ₁の辺(i,j)を+π/2シフト) − f(θ; γ₁の辺(i,j)を−π/2シフト)]
+              </FormulaBlock>
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                このN個の勾配値のばらつき（分散）を計算したものが勾配分散です。ḡはN個の
+                g(θₖ)の平均です。
+              </p>
+              <FormulaBlock>
+                勾配分散(p) = <Frac num="1" den="N" /> Σ<sub>k=1</sub>
+                <sup>N</sup> (g(θ<sub>k</sub>) − ḡ)²
+              </FormulaBlock>
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                この分散が小さいほど、ランダムな点での勾配が軒並みほぼ0に近い——
+                「どちらに動かせば改善するか」という手がかりが薄れていく、バレンプラトー
+                （勾配消失）の兆候です。
+              </p>
+            </Callout>
+          )}
 
-          <Callout label="補足：分散が小さいと何が悪いのか">
-            <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
-              <strong>これは悪いニュースです。</strong>古典最適化ループのStepのCOBYLA・勾配法のような
-              古典最適化器は、出発点の近くで「どちらに動かせば⟨cut⟩が増えるか」という
-              手がかり（勾配、または少なくとも近くの点とのわずかな差）を頼りに探索します。
-              勾配がほぼ全域で0に近いと、ランダムな出発点からはこの手がかりが得られず、
-              最適化器はどちらに動いてよいか分からないまま足踏みします。
-            </p>
-            <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
-              さらに実機では期待値を有限回のショット測定から推定するため、測定には
-              避けられないショットノイズ（およそ1/√ショット数の大きさ）が乗ります。
-              量子ビット数が増えると真の勾配は指数関数的に小さくなる一方、ショット
-              ノイズはそこまで小さくならないため、真の勾配信号がノイズに埋もれ、それを
-              検出するには指数関数的に多くのショットが必要になります——これがバレン
-              プラトーがQAOAやVQEのような変分量子アルゴリズムを大きな問題に拡張する
-              際の主要な障壁とされる理由です。逆に勾配分散が0から離れて大きいことは
-              良いニュースで、ランダムな出発点からでも古典最適化器が頼れる手がかりを
-              得られることを意味します。
-            </p>
-          </Callout>
+          {lang === 'en' ? (
+            <Callout label="Note: why is a small variance bad?">
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                <strong>This is bad news.</strong> Classical optimizers like COBYLA and the gradient
+                method from the Classical Optimization Loop Step search by relying on a clue near
+                the starting point — "which direction increases ⟨cut⟩" (the gradient, or at least a
+                small difference from a nearby point). If the gradient is close to 0 almost
+                everywhere, a random starting point gives no such clue, and the optimizer stalls,
+                unable to tell which way to move.
+              </p>
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                Furthermore, on real hardware, the expectation value is estimated from a finite
+                number of shot measurements, which carries unavoidable shot noise (roughly of size
+                1/√(number of shots)). As the number of qubits grows, the true gradient shrinks
+                exponentially, while shot noise doesn't shrink nearly as much — so the true gradient
+                signal gets buried in noise, and detecting it requires an exponentially larger number
+                of shots. This is considered a major barrier to scaling variational quantum
+                algorithms like QAOA or VQE to larger problems. Conversely, a gradient variance well
+                above 0 is good news: it means a classical optimizer can rely on a real clue even
+                from a random starting point.
+              </p>
+            </Callout>
+          ) : (
+            <Callout label="補足：分散が小さいと何が悪いのか">
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                <strong>これは悪いニュースです。</strong>古典最適化ループのStepのCOBYLA・勾配法のような
+                古典最適化器は、出発点の近くで「どちらに動かせば⟨cut⟩が増えるか」という
+                手がかり（勾配、または少なくとも近くの点とのわずかな差）を頼りに探索します。
+                勾配がほぼ全域で0に近いと、ランダムな出発点からはこの手がかりが得られず、
+                最適化器はどちらに動いてよいか分からないまま足踏みします。
+              </p>
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                さらに実機では期待値を有限回のショット測定から推定するため、測定には
+                避けられないショットノイズ（およそ1/√ショット数の大きさ）が乗ります。
+                量子ビット数が増えると真の勾配は指数関数的に小さくなる一方、ショット
+                ノイズはそこまで小さくならないため、真の勾配信号がノイズに埋もれ、それを
+                検出するには指数関数的に多くのショットが必要になります——これがバレン
+                プラトーがQAOAやVQEのような変分量子アルゴリズムを大きな問題に拡張する
+                際の主要な障壁とされる理由です。逆に勾配分散が0から離れて大きいことは
+                良いニュースで、ランダムな出発点からでも古典最適化器が頼れる手がかりを
+                得られることを意味します。
+              </p>
+            </Callout>
+          )}
 
-          <Callout label="補足：今回の測定結果は良いニュースか">
-            <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
-              ここまでは「分散が0に近づいたら何が起きるか」という一般論です。実際に
-              このグラフで分散が0に近づいているかどうかは、下の測定結果を見てください。
-              先に結論を言うと——この5量子ビットのbowtieグラフではpを1から5に増やしても
-              分散はほぼ0にならず、6〜9程度の範囲を保ったままです。
-            </p>
-            <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
-              <strong>今回の測定ではバレンプラトーの兆候は出ておらず、その意味では良い
-              結果です。</strong>ただしこれは、まだ量子ビット数が小さく、バレンプラトーが
-              強く現れる領域に達していないからだと考えられます。量子ビット数の多い
-              グラフに変えると、分散がpとともに縮み始める様子が見え始める可能性が
-              あります。
-            </p>
-          </Callout>
+          {lang === 'en' ? (
+            <Callout label="Note: is this measured result good news?">
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                Everything above is a general discussion of "what happens if the variance approaches
+                0." Whether it's actually approaching 0 for this particular graph is something you
+                can check in the measured results below. The conclusion up front: for this 5-qubit
+                bowtie graph, increasing p from 1 to 5 doesn't bring the variance close to 0 — it
+                stays roughly in the 6–9 range.
+              </p>
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                <strong>
+                  This measurement shows no sign of a barren plateau, which in that sense is a good
+                  result.
+                </strong>{' '}
+                However, this is likely because the number of qubits is still small and hasn't
+                reached the regime where barren plateaus appear strongly. Switching to a graph with
+                more qubits may start to reveal the variance shrinking as p increases.
+              </p>
+            </Callout>
+          ) : (
+            <Callout label="補足：今回の測定結果は良いニュースか">
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                ここまでは「分散が0に近づいたら何が起きるか」という一般論です。実際に
+                このグラフで分散が0に近づいているかどうかは、下の測定結果を見てください。
+                先に結論を言うと——この5量子ビットのbowtieグラフではpを1から5に増やしても
+                分散はほぼ0にならず、6〜9程度の範囲を保ったままです。
+              </p>
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                <strong>今回の測定ではバレンプラトーの兆候は出ておらず、その意味では良い
+                結果です。</strong>ただしこれは、まだ量子ビット数が小さく、バレンプラトーが
+                強く現れる領域に達していないからだと考えられます。量子ビット数の多い
+                グラフに変えると、分散がpとともに縮み始める様子が見え始める可能性が
+                あります。
+              </p>
+            </Callout>
+          )}
 
-          <Callout label="補足：なぜγ₁だけを見ているのか">
-            <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
-              全パラメータ（γ₁…γₚ, β₁…βₚ）ではなくγ₁だけを見ているのは、単純化のためです
-              ——1つのパラメータのシフト評価だけでも辺の数だけ回路実行が必要で、これを
-              全2pパラメータ×N=40点で行うとコストが大きく膨らみます。バレンプラトーの
-              標準的な文献（McCleanら, 2018）でも、十分ランダム化された回路では
-              どのパラメータの勾配も同じように消失していくため、代表として1つだけ測れば
-              傾向を示すには十分、という考え方に従っています。
-            </p>
-          </Callout>
+          {lang === 'en' ? (
+            <Callout label="Note: why look at only γ₁?">
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                We look at only γ₁ rather than all parameters (γ₁…γₚ, β₁…βₚ) for simplicity — even
+                evaluating the shift for a single parameter requires one circuit run per edge, and
+                doing this for all 2p parameters × N=40 points would balloon the cost considerably.
+                The standard barren-plateau literature (McClean et al., 2018) also follows this
+                approach: in a sufficiently randomized circuit, the gradient of every parameter
+                vanishes in the same way, so measuring one as a representative is enough to show the
+                trend.
+              </p>
+            </Callout>
+          ) : (
+            <Callout label="補足：なぜγ₁だけを見ているのか">
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                全パラメータ（γ₁…γₚ, β₁…βₚ）ではなくγ₁だけを見ているのは、単純化のためです
+                ——1つのパラメータのシフト評価だけでも辺の数だけ回路実行が必要で、これを
+                全2pパラメータ×N=40点で行うとコストが大きく膨らみます。バレンプラトーの
+                標準的な文献（McCleanら, 2018）でも、十分ランダム化された回路では
+                どのパラメータの勾配も同じように消失していくため、代表として1つだけ測れば
+                傾向を示すには十分、という考え方に従っています。
+              </p>
+            </Callout>
+          )}
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <BarChart
               labels={result.pValues.map((p) => `p=${p}`)}
@@ -160,48 +303,96 @@ export function DepthScanStep({ graphId }: DepthScanStepProps) {
             />
           </div>
 
-          <ul style={{ fontSize: 13, color: '#6b7280', paddingLeft: 22, lineHeight: 1.8, marginTop: 24 }}>
-            <li>
-              近似比はp=1（{result.approximationRatios[0].toFixed(3)}）からp≧2でほぼ1に近づき、
-              層を増やす効果がはっきり見える
-            </li>
-            <li>
-              一方で勾配分散はこの規模のグラフでは明確な単調減少になっていない——
-              バレンプラトー（勾配消失）は主に量子ビット数の増加によって顕著になる現象で、
-              深さpだけを増やしてもこの規模では強くは現れない、という正直な結果
-            </li>
-            <li>
-              量子ビット数の多いグラフに変えると、より明確な傾向が観測できると予想される——
-              最初のグラフ選択で他のグラフに変えて比べてみてください
-            </li>
-          </ul>
+          {lang === 'en' ? (
+            <ul style={{ fontSize: 13, color: '#6b7280', paddingLeft: 22, lineHeight: 1.8, marginTop: 24 }}>
+              <li>
+                The approximation ratio rises from p=1 ({result.approximationRatios[0].toFixed(3)})
+                to near 1 for p≥2 — the effect of adding layers is clearly visible
+              </li>
+              <li>
+                Meanwhile, the gradient variance doesn't show a clear monotonic decrease at this
+                graph size — a barren plateau (vanishing gradient) is primarily driven by increasing
+                qubit count, and increasing depth p alone doesn't strongly produce it at this scale;
+                this is an honest result
+              </li>
+              <li>
+                Switching to a graph with more qubits is expected to reveal a clearer trend — try
+                switching to a different graph in the graph-selection step and comparing
+              </li>
+            </ul>
+          ) : (
+            <ul style={{ fontSize: 13, color: '#6b7280', paddingLeft: 22, lineHeight: 1.8, marginTop: 24 }}>
+              <li>
+                近似比はp=1（{result.approximationRatios[0].toFixed(3)}）からp≧2でほぼ1に近づき、
+                層を増やす効果がはっきり見える
+              </li>
+              <li>
+                一方で勾配分散はこの規模のグラフでは明確な単調減少になっていない——
+                バレンプラトー（勾配消失）は主に量子ビット数の増加によって顕著になる現象で、
+                深さpだけを増やしてもこの規模では強くは現れない、という正直な結果
+              </li>
+              <li>
+                量子ビット数の多いグラフに変えると、より明確な傾向が観測できると予想される——
+                最初のグラフ選択で他のグラフに変えて比べてみてください
+              </li>
+            </ul>
+          )}
 
           <h4 style={{ fontSize: 15, margin: '32px 0 4px' }}>
-            γ・β平面上の経路（p={result.pValues[result.pValues.length - 1]}）
+            {lang === 'en'
+              ? `Path in the γ,β plane (p=${result.pValues[result.pValues.length - 1]})`
+              : `γ・β平面上の経路（p=${result.pValues[result.pValues.length - 1]}）`}
           </h4>
-          <Callout label="補足：この比較の読み方">
-            <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
-              青がCOBYLAで実際に見つかった最良解のγ<sub>i</sub>・β<sub>i</sub>（i=1からpまで、
-              数字は層の順番）、オレンジの破線が
-              <a href="#concepts">量子力学・QAOA用語集の§5.2</a>
-              で導出した断熱定理由来のスケジュール（γ<sub>i</sub>=s<sub>i</sub>・π、
-              β<sub>i</sub>=(1−s<sub>i</sub>)・π）です。
-            </p>
-            <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
-              オレンジの経路の絶対的な位置には意味がありません——断熱定理が要求するのは
-              「時間Tが十分大きいこと」だけで、Tの具体的な値はこのアプリの中で自然には
-              決まらないため、γ・βの軸に収まるようscale=πを選んで正規化しただけです。
-              比較すべきは絶対値ではなく<strong>形（γが増加し、βが減少していく傾向か）</strong>
-              です。
-            </p>
-            <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
-              両者が似ていなくても不思議ではありません——断熱定理は「この形を使えば十分大きな
-              pで最適解に至る」という十分条件を述べているだけで、「最良のパラメータは必ず
-              この形になる」という必要条件ではないからです（詳しくは用語集§5.4）。青い経路が
-              オレンジと違う形をしていたら、それはCOBYLAが断熱的な経路とは違う、非断熱的な
-              近道を見つけた可能性を示しています。
-            </p>
-          </Callout>
+          {lang === 'en' ? (
+            <Callout label="Note: how to read this comparison">
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                Blue is the γ<sub>i</sub>,β<sub>i</sub> of the best solution actually found by COBYLA
+                (i=1 to p, the number is the layer's order), and the orange dashed line is the
+                adiabatic-theorem-derived schedule (γ<sub>i</sub>=s<sub>i</sub>·π, β<sub>i</sub>
+                =(1−s<sub>i</sub>)·π) derived in{' '}
+                <a href="#concepts">§5.2 of the Quantum Mechanics & QAOA Glossary</a>.
+              </p>
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                The absolute position of the orange path has no meaning — the adiabatic theorem only
+                requires "a sufficiently large time T," and this app has no natural way to pin down
+                a concrete value for T, so we simply normalized it with scale=π to fit the γ,β axes.
+                What should be compared isn't the absolute values but the{' '}
+                <strong>shape (does γ trend upward while β trends downward?)</strong>.
+              </p>
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                It's not surprising if the two don't look alike — the adiabatic theorem only states
+                a sufficient condition, "using this shape reaches the optimal solution for a
+                sufficiently large p," not a necessary condition that "the best parameters must
+                always take this shape" (see §5.4 of the glossary for details). If the blue path has
+                a different shape from the orange one, that suggests COBYLA may have found a
+                non-adiabatic shortcut, different from the adiabatic path.
+              </p>
+            </Callout>
+          ) : (
+            <Callout label="補足：この比較の読み方">
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                青がCOBYLAで実際に見つかった最良解のγ<sub>i</sub>・β<sub>i</sub>（i=1からpまで、
+                数字は層の順番）、オレンジの破線が
+                <a href="#concepts">量子力学・QAOA用語集の§5.2</a>
+                で導出した断熱定理由来のスケジュール（γ<sub>i</sub>=s<sub>i</sub>・π、
+                β<sub>i</sub>=(1−s<sub>i</sub>)・π）です。
+              </p>
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+                オレンジの経路の絶対的な位置には意味がありません——断熱定理が要求するのは
+                「時間Tが十分大きいこと」だけで、Tの具体的な値はこのアプリの中で自然には
+                決まらないため、γ・βの軸に収まるようscale=πを選んで正規化しただけです。
+                比較すべきは絶対値ではなく<strong>形（γが増加し、βが減少していく傾向か）</strong>
+                です。
+              </p>
+              <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+                両者が似ていなくても不思議ではありません——断熱定理は「この形を使えば十分大きな
+                pで最適解に至る」という十分条件を述べているだけで、「最良のパラメータは必ず
+                この形になる」という必要条件ではないからです（詳しくは用語集§5.4）。青い経路が
+                オレンジと違う形をしていたら、それはCOBYLAが断熱的な経路とは違う、非断熱的な
+                近道を見つけた可能性を示しています。
+              </p>
+            </Callout>
+          )}
           <ParameterPathChart
             actualGammas={result.bestGammas[result.bestGammas.length - 1]}
             actualBetas={result.bestBetas[result.bestBetas.length - 1]}
@@ -219,17 +410,26 @@ export function DepthScanStep({ graphId }: DepthScanStepProps) {
             }}
           >
             <li>
-              <span style={{ color: '#3b82f6', fontWeight: 700 }}>●━━</span> 実際に最適化された経路
-              （COBYLAの最良解）
+              <span style={{ color: '#3b82f6', fontWeight: 700 }}>●━━</span>{' '}
+              {lang === 'en'
+                ? 'the actually optimized path (COBYLA best solution)'
+                : '実際に最適化された経路（COBYLAの最良解）'}
             </li>
             <li>
-              <span style={{ color: '#f59e0b', fontWeight: 700 }}>●┄┄</span> 断熱定理由来のスケジュール
-              （形のみ比較、絶対値に意味なし）
+              <span style={{ color: '#f59e0b', fontWeight: 700 }}>●┄┄</span>{' '}
+              {lang === 'en'
+                ? 'the adiabatic-theorem-derived schedule (shape comparison only, absolute values meaningless)'
+                : '断熱定理由来のスケジュール（形のみ比較、絶対値に意味なし）'}
             </li>
           </ul>
         </>
       ) : (
-        <p>計算中（数秒かかります）...</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0' }}>
+          <div className="spinner" />
+          <p style={{ margin: 0 }}>
+            {lang === 'en' ? 'Computing (this takes a few seconds)...' : '計算中（数秒かかります）...'}
+          </p>
+        </div>
       )}
     </section>
   )

@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react'
 
+// The app's two supported UI languages. Selected via ?lang= in the URL
+// (App.tsx), threaded down into each build*Steps(...) function so each
+// step can pick its own content per language.
+export type Lang = 'ja' | 'en'
+
 export interface GraphNode {
   id: number
   x: number

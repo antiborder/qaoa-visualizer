@@ -1,85 +1,147 @@
+import type { ReactNode } from 'react'
 import { Callout, Frac, FormulaBlock } from './Formula'
 
 const sectionHeaderStyle = { fontSize: 22, marginTop: 48 }
 const subHeaderStyle = { fontSize: 17, marginTop: 28 }
 const bodyStyle = { fontSize: 15, lineHeight: 1.85, color: '#1f2937' }
 
+// A 2x2 block matrix, bracketed like Formula.tsx's ColVec - used to show U
+// written in block form with respect to the environment's basis, so that
+// Kₖ:=⟨k|U|0⟩ visibly reads off as "the k-th row of U's left column."
+function Matrix2x2({ a, b, c, d }: { a: ReactNode; b: ReactNode; c: ReactNode; d: ReactNode }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle', margin: '0 4px', fontStyle: 'normal' }}>
+      <span style={{ fontSize: '2.6em', fontWeight: 300, lineHeight: 1 }}>(</span>
+      <span
+        style={{
+          display: 'inline-grid',
+          gridTemplateColumns: 'auto auto',
+          columnGap: 22,
+          rowGap: 6,
+          padding: '0 8px',
+          fontSize: '0.8em',
+        }}
+      >
+        <span>{a}</span>
+        <span>{b}</span>
+        <span>{c}</span>
+        <span>{d}</span>
+      </span>
+      <span style={{ fontSize: '2.6em', fontWeight: 300, lineHeight: 1 }}>)</span>
+    </span>
+  )
+}
+
 // Illustrates the Stinespring picture that unifies CPTP channels and POVMs:
-// couple the system to an environment via one joint unitary, then either
-// (a) trace out the environment without looking (→ channel) or (b) measure
-// the environment and look at the outcome (→ POVM + conditional post-state).
-// Same physical setup, two different questions asked of it.
+// couple the system to an environment via one joint unitary, extract the
+// Kraus operators Kₖ as U's own matrix elements in the environment basis
+// (the step the original version of this diagram skipped straight past),
+// then either (a) trace out the environment without looking (→ channel,
+// blue) or (b) measure the environment and look at the outcome (→ POVM,
+// violet). The amber box is the one object both colored paths are built
+// from - same physical setup, two different questions asked of it.
 function StinespringDiagram() {
-  const boxStyle = { fill: '#ffffff', stroke: '#94a3b8', strokeWidth: 1.5 }
+  const neutralBox = { fill: '#ffffff', stroke: '#94a3b8', strokeWidth: 1.5 }
   const textStyle = { fill: '#1f2937', fontSize: 13, textAnchor: 'middle' as const }
   const labelStyle = { fill: '#6b7280', fontSize: 12, textAnchor: 'middle' as const }
+  const blue = '#3b82f6'
+  const violet = '#a855f7'
+  const amber = '#f59e0b'
+
   return (
-    <svg viewBox="0 0 620 400" width="100%" role="img" aria-label="Stinespring dilation diagram">
-      {/* top: system + environment, uncorrelated */}
-      <rect x={210} y={10} width={200} height={44} rx={8} style={boxStyle} />
-      <text x={310} y={38} style={textStyle}>
+    <svg viewBox="0 0 700 560" width="100%" role="img" aria-label="Stinespring dilation diagram: channel and POVM built from the same Kraus operators">
+      <defs>
+        <marker id="stine-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8" />
+        </marker>
+      </defs>
+
+      {/* step 1: system + environment, uncorrelated */}
+      <rect x={190} y={8} width={320} height={44} rx={8} style={neutralBox} />
+      <text x={350} y={34} style={textStyle}>
         ρ ⊗ |0⟩⟨0|（系＋環境、無相関）
       </text>
 
-      <line x1={310} y1={54} x2={310} y2={100} stroke="#94a3b8" strokeWidth={1.5} />
-      <text x={310} y={78} style={labelStyle}>
-        結合ユニタリ U
+      <line x1={350} y1={52} x2={350} y2={92} stroke="#94a3b8" strokeWidth={1.5} markerEnd="url(#stine-arrow)" />
+      <text x={350} y={68} style={labelStyle}>
+        <tspan x={350} dy={0}>結合ユニタリ U</tspan>
+        <tspan x={350} dy={15}>（系と環境をまとめて時間発展）</tspan>
       </text>
 
-      {/* middle: entangled system+environment */}
-      <rect x={180} y={104} width={260} height={44} rx={8} style={boxStyle} />
-      <text x={310} y={132} style={textStyle}>
+      {/* step 2: entangled system+environment, after U acts */}
+      <rect x={190} y={98} width={320} height={44} rx={8} style={neutralBox} />
+      <text x={350} y={124} style={textStyle}>
         U(ρ⊗|0⟩⟨0|)U†（系と環境がもつれる）
       </text>
 
-      {/* branch */}
-      <line x1={280} y1={148} x2={130} y2={200} stroke="#94a3b8" strokeWidth={1.5} />
-      <line x1={340} y1={148} x2={490} y2={200} stroke="#94a3b8" strokeWidth={1.5} />
-      <text x={155} y={178} style={labelStyle}>
-        環境を見ずに
-      </text>
-      <text x={155} y={193} style={labelStyle}>
-        捨てる（部分トレース）
-      </text>
-      <text x={465} y={178} style={labelStyle}>
-        環境を基底{'{|k⟩}'}で
-      </text>
-      <text x={465} y={193} style={labelStyle}>
-        測定する
+      <line x1={350} y1={142} x2={350} y2={198} stroke="#94a3b8" strokeWidth={1.5} markerEnd="url(#stine-arrow)" />
+      <text x={350} y={162} style={labelStyle}>
+        <tspan x={350} dy={0}>環境の行列要素を取り出す：</tspan>
+        <tspan x={350} dy={15}>Kₖ := ⟨k|U|0⟩（系だけに作用する演算子）</tspan>
       </text>
 
-      {/* left: channel */}
-      <rect x={10} y={204} width={240} height={70} rx={8} style={{ ...boxStyle, fill: '#f8fafc' }} />
-      <text x={130} y={228} style={{ ...textStyle, fontWeight: 700 }}>
+      {/* step 3: the shared Kraus operator - the bridge both paths come from */}
+      <rect x={170} y={202} width={360} height={78} rx={10} style={{ fill: '#fffbeb', stroke: amber, strokeWidth: 2 }} />
+      <text x={350} y={226} style={{ ...textStyle, fontWeight: 700 }}>
+        クラウス演算子 Kₖ（系だけに作用する演算子）
+      </text>
+      <text x={350} y={248} style={textStyle}>
+        Σₖ Kₖ†Kₖ = I　（Uのユニタリ性から）
+      </text>
+      <text x={350} y={268} style={{ ...labelStyle, fontSize: 11 }}>
+        この同じKₖが、下の両方の描像に共通して現れる
+      </text>
+
+      {/* branch into the two colored paths */}
+      <line x1={280} y1={280} x2={160} y2={348} stroke={blue} strokeWidth={1.5} markerEnd="url(#stine-arrow)" />
+      <line x1={420} y1={280} x2={540} y2={348} stroke={violet} strokeWidth={1.5} markerEnd="url(#stine-arrow)" />
+      <text x={175} y={306} style={{ ...labelStyle, fill: blue }}>
+        <tspan x={175} dy={0}>環境を見ずに</tspan>
+        <tspan x={175} dy={15}>捨てる（部分トレース Trₑ）</tspan>
+      </text>
+      <text x={525} y={306} style={{ ...labelStyle, fill: violet }}>
+        <tspan x={525} dy={0}>環境を基底{'{|k⟩}'}で</tspan>
+        <tspan x={525} dy={15}>測定する（見る）</tspan>
+      </text>
+
+      {/* left: channel (don't look) */}
+      <rect x={20} y={350} width={280} height={106} rx={8} style={{ fill: '#eff6ff', stroke: blue, strokeWidth: 1.5 }} />
+      <text x={160} y={374} style={{ ...textStyle, fontWeight: 700, fill: blue }}>
         CPTPチャネル（見ない）
       </text>
-      <text x={130} y={248} style={textStyle}>
-        E(ρ) = Σₖ Kₖ ρ Kₖ†
+      <text x={160} y={398} style={textStyle}>
+        E(ρ) = Σₖ KₖρKₖ†
       </text>
-      <text x={130} y={264} style={{ ...labelStyle, fontSize: 11 }}>
+      <text x={160} y={430} style={{ ...labelStyle, fontSize: 11 }}>
         「結果kが何であれ平均した状態」
       </text>
 
-      {/* right: POVM */}
-      <rect x={370} y={204} width={240} height={70} rx={8} style={{ ...boxStyle, fill: '#f8fafc' }} />
-      <text x={490} y={228} style={{ ...textStyle, fontWeight: 700 }}>
+      {/* right: POVM (look) - P(k) shown two ways, mirroring the left box's
+          single-formula channel definition: first via Mₖ (the "measurement"
+          object), then rewritten via Kₖ directly to show it's the same
+          KₖρKₖ† building block the channel sums over, just traced for one k
+          instead of summed over all k. */}
+      <rect x={400} y={350} width={280} height={106} rx={8} style={{ fill: '#faf5ff', stroke: violet, strokeWidth: 1.5 }} />
+      <text x={540} y={374} style={{ ...textStyle, fontWeight: 700, fill: violet }}>
         POVM {'{Mₖ}'}（見る）
       </text>
-      <text x={490} y={248} style={textStyle}>
-        確率 Tr(Mₖρ)、結果k
+      <text x={540} y={396} style={textStyle}>
+        Mₖ := Kₖ†Kₖ，P(k) = Trₛ(Mₖρ)
       </text>
-      <text x={490} y={264} style={{ ...labelStyle, fontSize: 11 }}>
+      <text x={540} y={414} style={textStyle}>
+        = Trₛ(KₖρKₖ†)
+      </text>
+      <text x={540} y={436} style={{ ...labelStyle, fontSize: 11 }}>
         条件付き状態 ∝ KₖρKₖ†
       </text>
 
-      <line x1={130} y1={274} x2={130} y2={310} stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 3" />
-      <line x1={490} y1={274} x2={490} y2={310} stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 3" />
-      <line x1={130} y1={310} x2={490} y2={310} stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 3" />
-      <text x={310} y={334} style={{ ...labelStyle, fontSize: 12 }}>
-        同じKₖから、Mₖ:=Kₖ†Kₖ で結ばれている——同じ物理的な設定に
-      </text>
-      <text x={310} y={350} style={{ ...labelStyle, fontSize: 12 }}>
-        「何が起きたか見るか、見ないか」という別の問いを立てているだけ
+      {/* converge: both are two questions asked of the same setup */}
+      <line x1={160} y1={456} x2={160} y2={480} stroke={blue} strokeWidth={1.5} strokeDasharray="4 3" />
+      <line x1={540} y1={456} x2={540} y2={480} stroke={violet} strokeWidth={1.5} strokeDasharray="4 3" />
+      <line x1={160} y1={480} x2={540} y2={480} stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 3" />
+      <text x={350} y={504} style={{ ...labelStyle, fontSize: 12 }}>
+        <tspan x={350} dy={0}>同じKₖ・同じUから、「環境を見るか見ないか」という</tspan>
+        <tspan x={350} dy={16}>問いの違いだけで両方の描像が導かれる</tspan>
       </text>
     </svg>
   )
@@ -513,9 +575,17 @@ export function ConceptsPage() {
         どんな量子チャネルも、「量子ビットを、決まった初期状態の環境と一緒にユニタリに時間発展
         させ、その環境部分は見ずに捨てる」という手続き（Stinespring表現）として理解できます。
         環境との相互作用自体は完全にユニタリ（情報を失わない）なのですが、その環境部分を見ずに
-        捨てる（部分トレースをとる）せいで、量子ビット単体から見ると情報が失われたように
-        見える——これが「チャネル」の正体です。同じ内容は、次の
-        <strong>クラウス演算子</strong>K<sub>k</sub>の集まりでも書けます。
+        捨てる操作——<strong>環境側だけをトレースアウトする部分トレースTr<sub>E</sub></strong>
+        ——のせいで、量子ビット単体から見ると情報が失われたように見える——これが「チャネル」の
+        正体です。
+      </p>
+      <FormulaBlock>
+        E(ρ) = Tr<sub>E</sub>[U(ρ⊗|0⟩⟨0|)U†]
+      </FormulaBlock>
+      <p style={bodyStyle}>
+        Tr<sub>E</sub>の添字Eは、系H<sub>S</sub>と環境H<sub>E</sub>のうち<strong>環境側だけ</strong>
+        を足し合わせて消す（系側は演算子のまま残す）ことを表しています——上のK<sub>k</sub>を
+        使って<strong>クラウス演算子</strong>の集まりでも書けます。
       </p>
       <FormulaBlock>
         E(ρ) = Σ<sub>k</sub> K<sub>k</sub>ρK<sub>k</sub>†，　Σ<sub>k</sub> K<sub>k</sub>†K<sub>k</sub> = I
@@ -537,8 +607,13 @@ export function ConceptsPage() {
       </FormulaBlock>
       <p style={bodyStyle}>状態ρを測定して結果kを得る確率は、次の式で与えられます。</p>
       <FormulaBlock>
-        P(k) = Tr(M<sub>k</sub>ρ)
+        P(k) = Tr<sub>M</sub>(M<sub>k</sub>ρ)
       </FormulaBlock>
+      <p style={bodyStyle}>
+        添字Mは、M<sub>k</sub>とρが実際に住んでいる<strong>測定系</strong>（系のヒルベルト
+        空間H<sub>S</sub>）だけをトレースしていることを表します——先ほどのTr<sub>E</sub>とは、
+        そもそもどちらの空間の上で足し合わせているかが違う、別のトレースです。
+      </p>
       <p style={bodyStyle}>
         射影測定のように直交射影子である必要はなく、一般化された測定です。これは上のクラウス
         演算子と直接つながっています。チャネルのクラウス演算子K<sub>k</sub>に対して、次のように
@@ -559,13 +634,53 @@ export function ConceptsPage() {
 
       <StinespringDiagram />
 
+      <Callout label="補足：Kₖ := ⟨k|U|0⟩ の2つのkは何を指すか">
+        <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+          結論から言うと、K<sub>k</sub>の添字kと⟨k|の中のkは<strong>同じもの</strong>です。
+          別々の記号ではなく、1つの自由変数kを2箇所に書いているだけです。
+        </p>
+        <FormulaBlock>
+          K<sub>k</sub> := ⟨k| U |0⟩
+        </FormulaBlock>
+        <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+          Uは系と環境を合わせた合成系H<sub>S</sub>⊗H<sub>E</sub>に作用するユニタリです。⟨k|は
+          <strong>環境側</strong>のヒルベルト空間H<sub>E</sub>上に取った正規直交基底{'{|k⟩}'}の
+          うちの1本——つまりkは「環境が測定でどの結果になったか」を表すラベルで、環境がd次元
+          なら k=0,1,…,d−1 のd通りを取ります（系の状態やσᵢ・xᵢとは無関係の、環境側だけの
+          添字です）。
+        </p>
+        <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+          ⟨k|U|0⟩という計算は、Uのうち<strong>環境の部分だけ</strong>に⟨k|と|0⟩を挟んで内積を
+          取り、系の部分は演算子のまま残す操作（部分行列要素）です。結果として、K<sub>k</sub>は
+          系のヒルベルト空間H<sub>S</sub>上だけに作用する演算子になります。環境が1量子ビット
+          （k=0,1の2通り）だとして、Uを環境側の基底{'{|0⟩,|1⟩}'}でブロック行列として書くと、
+          具体的には次のようになります。
+        </p>
+        <FormulaBlock>
+          U = <Matrix2x2 a={<>K<sub>0</sub></>} b="*" c={<>K<sub>1</sub></>} d="*" />
+        </FormulaBlock>
+        <p style={{ margin: '0 0 10px', fontSize: 14, color: '#334155' }}>
+          系の演算子を成分とする2×2のブロック行列で、左の列（環境の初期状態|0⟩に対応する列）
+          だけを見ると、上のブロックがK<sub>0</sub>=⟨0|U|0⟩、下のブロックがK<sub>1</sub>=⟨1|U|0⟩
+          です（右の列＝環境が|1⟩から始まった場合のブロックは、環境が必ず|0⟩から始まる今回は
+          使いません）。つまりK<sub>k</sub>は、Uという1つの大きな行列を環境の基底でブロックに
+          割ったときの、<strong>左端の列に並ぶ各ブロック</strong>そのものです。
+        </p>
+        <p style={{ margin: 0, fontSize: 14, color: '#334155' }}>
+          式の中の|0⟩はkとは別の役割の記号で、「環境は測定される前、常にこの決まった初期状態
+          |0⟩から始まる」という前提を表す<strong>固定された値</strong>です（系と環境は最初
+          無相関で、環境は決まった状態から出発するというStinespring表現の前提）。kのように
+          いろいろな値を動く添字ではなく、常に同じ|0⟩です。
+        </p>
+      </Callout>
+
       <p style={bodyStyle}>
         上の図の左右2つの箱は、同じ結合ユニタリUと同じクラウス演算子{'{K'}<sub>k</sub>{'}'}から、
         「環境を見ない」か「環境を見る」かだけで枝分かれしています。上で述べた量子
         トラジェクトリ法がどのクラウス演算子が起きたかを選ぶ操作は、次の確率に従っており、
       </p>
       <FormulaBlock>
-        Tr(K<sub>k</sub>ρK<sub>k</sub>†) = Tr(M<sub>k</sub>ρ)
+        Tr<sub>M</sub>(K<sub>k</sub>ρK<sub>k</sub>†) = Tr<sub>M</sub>(M<sub>k</sub>ρ)
       </FormulaBlock>
       <p style={bodyStyle}>
         まさにこのPOVM{'{M'}<sub>k</sub>{'}'}による測定を（結果を見ずに）行っていることに
@@ -601,7 +716,7 @@ export function ConceptsPage() {
       </FormulaBlock>
       <p style={bodyStyle}>
         （直交射影子：Kraus演算子K<sub>b</sub>もΠ<sub>b</sub>そのものです）この場合は
-        Tr(Π<sub>b</sub>ρ)がちょうど|c<sub>b</sub>|²に一致し、測定後の状態もΠ<sub>b</sub>ρΠ
+        Tr<sub>M</sub>(Π<sub>b</sub>ρ)がちょうど|c<sub>b</sub>|²に一致し、測定後の状態もΠ<sub>b</sub>ρΠ
         <sub>b</sub>を規格化した|b⟩⟨b|そのもの（元の重ね合わせは壊れ、測定で得たビット列に
         「収縮」する）になります。POVMはこれを、直交射影子である必要のない、より一般の
         正定値演算子にまで広げたものです。

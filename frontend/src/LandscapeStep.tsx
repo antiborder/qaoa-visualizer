@@ -1,5 +1,5 @@
 import { Landscape3D, Landscape3DLegend, Skeleton, nearestGridValue } from './Landscape3D'
-import type { LandscapeResult } from './types'
+import type { Lang, LandscapeResult } from './types'
 
 interface LandscapeStepProps {
   landscape: LandscapeResult | null
@@ -8,6 +8,7 @@ interface LandscapeStepProps {
   beta1: number
   onGamma1Change: (gamma1: number) => void
   onBeta1Change: (beta1: number) => void
+  lang: Lang
 }
 
 export function LandscapeStep({
@@ -17,16 +18,27 @@ export function LandscapeStep({
   beta1,
   onGamma1Change,
   onBeta1Change,
+  lang,
 }: LandscapeStepProps) {
   return (
     <section style={{ marginTop: 48 }}>
-      <p>
-        ミキサーユニタリのStepでは手動でγ・βを探しましたが、ここでは(γ,β)平面上すべての点で
-        期待カット値⟨cut⟩を計算し、曲面として表示します。ドラッグして回転、
-        スクロールして拡大縮小できます。γ₁・β₁はコストユニタリ・ミキサーユニタリ・
-        2層目への拡張の各Stepと共有しているスライダーです——ここで動かすと曲面上の
-        黒い輪（現在値）も一緒に動きます。
-      </p>
+      {lang === 'en' ? (
+        <p>
+          In the Mixer Unitary Step, you searched for γ,β by hand. Here, instead, we compute the
+          expected cut value ⟨cut⟩ at every point on the (γ,β) plane and display it as a surface.
+          Drag to rotate, scroll to zoom. γ₁,β₁ are the sliders shared with the cost unitary, mixer
+          unitary, and Extending to a Second Layer Steps — moving them here also moves the black
+          ring (the current value) on the surface.
+        </p>
+      ) : (
+        <p>
+          ミキサーユニタリのStepでは手動でγ・βを探しましたが、ここでは(γ,β)平面上すべての点で
+          期待カット値⟨cut⟩を計算し、曲面として表示します。ドラッグして回転、
+          スクロールして拡大縮小できます。γ₁・β₁はコストユニタリ・ミキサーユニタリ・
+          2層目への拡張の各Stepと共有しているスライダーです——ここで動かすと曲面上の
+          黒い輪（現在値）も一緒に動きます。
+        </p>
+      )}
       <label style={{ display: 'block', margin: '16px 0' }}>
         γ₁ = {gamma1.toFixed(2)}
         <input

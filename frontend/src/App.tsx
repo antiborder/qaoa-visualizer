@@ -10,7 +10,15 @@ import { OptimizeStep } from './OptimizeStep'
 import { buildStep1Steps } from './Step1Walkthrough'
 import { buildTwoLayerSteps } from './TwoLayerWalkthrough'
 import { Walkthrough } from './Walkthrough'
-import type { GraphData, GraphInfo, LandscapeResult, MISOptimalResult, OptimalResult, WalkthroughStep } from './types'
+import type {
+  GraphData,
+  GraphInfo,
+  Lang,
+  LandscapeResult,
+  MISOptimalResult,
+  OptimalResult,
+  WalkthroughStep,
+} from './types'
 
 const API_BASE = 'http://localhost:8000'
 
@@ -36,12 +44,26 @@ function App() {
   // "concepts" reference page without pulling in a routing library for a
   // single-user learning app with one extra page.
   const [page, setPage] = useState(() => (window.location.hash === '#concepts' ? 'concepts' : 'main'))
+  // Language selection, shareable via ?lang=en / ?lang=ja in the URL.
+  // Currently only Step1Walkthrough.tsx reads `lang` - every other chapter
+  // still renders Japanese regardless of this value, as a deliberate pilot
+  // before translating the rest.
+  const [lang, setLang] = useState<Lang>(() =>
+    new URLSearchParams(window.location.search).get('lang') === 'en' ? 'en' : 'ja',
+  )
 
   useEffect(() => {
     const onHashChange = () => setPage(window.location.hash === '#concepts' ? 'concepts' : 'main')
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
+
+  const changeLang = (next: Lang) => {
+    setLang(next)
+    const url = new URL(window.location.href)
+    url.searchParams.set('lang', next)
+    window.history.replaceState(null, '', url)
+  }
 
   useEffect(() => {
     fetch(`${API_BASE}/api/graphs`)
@@ -127,6 +149,7 @@ function App() {
       onSelectPartition: setPartitionIndex,
       currentGraphLabel,
       onJumpToChapter: jumpToChapter,
+      lang,
     }),
     ...buildCostUnitarySteps({
       graphId,
@@ -135,6 +158,7 @@ function App() {
       optimalCutValue: optimal.cutValue,
       gamma1,
       onGamma1Change: setGamma1,
+      lang,
     }),
     ...buildMixerUnitarySteps({
       graphId,
@@ -143,10 +167,11 @@ function App() {
       beta1,
       onGamma1Change: setGamma1,
       onBeta1Change: setBeta1,
+      lang,
     }),
     {
-      chapter: 'パラメータランドスケープ',
-      section: 'パラメータランドスケープ',
+      chapter: lang === 'en' ? 'Parameter Landscape' : 'パラメータランドスケープ',
+      section: lang === 'en' ? 'Parameter Landscape' : 'パラメータランドスケープ',
       title: '',
       content: (
         <LandscapeStep
@@ -156,14 +181,17 @@ function App() {
           beta1={beta1}
           onGamma1Change={setGamma1}
           onBeta1Change={setBeta1}
+          lang={lang}
         />
       ),
     },
     {
-      chapter: '古典最適化ループ',
-      section: '古典最適化ループ',
+      chapter: lang === 'en' ? 'Classical Optimization Loop' : '古典最適化ループ',
+      section: lang === 'en' ? 'Classical Optimization Loop' : '古典最適化ループ',
       title: '',
-      content: <OptimizeStep graphId={graphId} landscape={landscape} optimalCutValue={optimal.cutValue} />,
+      content: (
+        <OptimizeStep graphId={graphId} landscape={landscape} optimalCutValue={optimal.cutValue} lang={lang} />
+      ),
     },
     ...buildTwoLayerSteps({
       graphId,
@@ -172,19 +200,25 @@ function App() {
       beta1,
       onGamma1Change: setGamma1,
       onBeta1Change: setBeta1,
+      lang,
     }),
     {
-      chapter: '層数pへの一般化',
-      section: '層数pへの一般化',
+      chapter: lang === 'en' ? 'Generalizing to p Layers' : '層数pへの一般化',
+      section: lang === 'en' ? 'Generalizing to p Layers' : '層数pへの一般化',
       title: '',
-      content: <DepthScanStep graphId={graphId} />,
+      content: <DepthScanStep graphId={graphId} lang={lang} />,
     },
     {
-      chapter: 'ノイズありシミュレーションとの比較',
-      section: 'ノイズありシミュレーションとの比較',
+      chapter: lang === 'en' ? 'Comparing Against a Noisy Simulation' : 'ノイズありシミュレーションとの比較',
+      section: lang === 'en' ? 'Comparing Against a Noisy Simulation' : 'ノイズありシミュレーションとの比較',
       title: '',
       content: landscape ? (
-        <NoiseStep graphId={graphId} optimalCutValue={optimal.cutValue} bestPoint={landscape.bestOnGrid} />
+        <NoiseStep
+          graphId={graphId}
+          optimalCutValue={optimal.cutValue}
+          bestPoint={landscape.bestOnGrid}
+          lang={lang}
+        />
       ) : null,
     },
     ...buildMISSteps({
@@ -193,12 +227,46 @@ function App() {
       onSelectGraph: setGraphId,
       graph,
       misOptimal,
+      lang,
     }),
   ]
   stepsRef.current = steps
 
   return (
     <main style={{ maxWidth: 800, margin: '0 auto', fontFamily: 'sans-serif', padding: '0 16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 0 0', fontSize: 13 }}>
+        <button
+          onClick={() => changeLang('ja')}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            font: 'inherit',
+            color: lang === 'ja' ? '#1f2937' : '#4f8cff',
+            fontWeight: lang === 'ja' ? 700 : 400,
+            textDecoration: lang === 'ja' ? 'none' : 'underline',
+          }}
+        >
+          日本語
+        </button>
+        <span style={{ color: '#d1d5db' }}>|</span>
+        <button
+          onClick={() => changeLang('en')}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            font: 'inherit',
+            color: lang === 'en' ? '#1f2937' : '#4f8cff',
+            fontWeight: lang === 'en' ? 700 : 400,
+            textDecoration: lang === 'en' ? 'none' : 'underline',
+          }}
+        >
+          English
+        </button>
+      </div>
       <Walkthrough steps={steps} stepIndex={currentStep} onStepChange={setCurrentStep} />
     </main>
   )
