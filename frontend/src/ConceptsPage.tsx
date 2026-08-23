@@ -4,6 +4,87 @@ const sectionHeaderStyle = { fontSize: 22, marginTop: 48 }
 const subHeaderStyle = { fontSize: 17, marginTop: 28 }
 const bodyStyle = { fontSize: 15, lineHeight: 1.85, color: '#1f2937' }
 
+// Illustrates the Stinespring picture that unifies CPTP channels and POVMs:
+// couple the system to an environment via one joint unitary, then either
+// (a) trace out the environment without looking (→ channel) or (b) measure
+// the environment and look at the outcome (→ POVM + conditional post-state).
+// Same physical setup, two different questions asked of it.
+function StinespringDiagram() {
+  const boxStyle = { fill: '#ffffff', stroke: '#94a3b8', strokeWidth: 1.5 }
+  const textStyle = { fill: '#1f2937', fontSize: 13, textAnchor: 'middle' as const }
+  const labelStyle = { fill: '#6b7280', fontSize: 12, textAnchor: 'middle' as const }
+  return (
+    <svg viewBox="0 0 620 400" width="100%" role="img" aria-label="Stinespring dilation diagram">
+      {/* top: system + environment, uncorrelated */}
+      <rect x={210} y={10} width={200} height={44} rx={8} style={boxStyle} />
+      <text x={310} y={38} style={textStyle}>
+        ρ ⊗ |0⟩⟨0|（系＋環境、無相関）
+      </text>
+
+      <line x1={310} y1={54} x2={310} y2={100} stroke="#94a3b8" strokeWidth={1.5} />
+      <text x={310} y={78} style={labelStyle}>
+        結合ユニタリ U
+      </text>
+
+      {/* middle: entangled system+environment */}
+      <rect x={180} y={104} width={260} height={44} rx={8} style={boxStyle} />
+      <text x={310} y={132} style={textStyle}>
+        U(ρ⊗|0⟩⟨0|)U†（系と環境がもつれる）
+      </text>
+
+      {/* branch */}
+      <line x1={280} y1={148} x2={130} y2={200} stroke="#94a3b8" strokeWidth={1.5} />
+      <line x1={340} y1={148} x2={490} y2={200} stroke="#94a3b8" strokeWidth={1.5} />
+      <text x={155} y={178} style={labelStyle}>
+        環境を見ずに
+      </text>
+      <text x={155} y={193} style={labelStyle}>
+        捨てる（部分トレース）
+      </text>
+      <text x={465} y={178} style={labelStyle}>
+        環境を基底{'{|k⟩}'}で
+      </text>
+      <text x={465} y={193} style={labelStyle}>
+        測定する
+      </text>
+
+      {/* left: channel */}
+      <rect x={10} y={204} width={240} height={70} rx={8} style={{ ...boxStyle, fill: '#f8fafc' }} />
+      <text x={130} y={228} style={{ ...textStyle, fontWeight: 700 }}>
+        CPTPチャネル（見ない）
+      </text>
+      <text x={130} y={248} style={textStyle}>
+        E(ρ) = Σₖ Kₖ ρ Kₖ†
+      </text>
+      <text x={130} y={264} style={{ ...labelStyle, fontSize: 11 }}>
+        「結果kが何であれ平均した状態」
+      </text>
+
+      {/* right: POVM */}
+      <rect x={370} y={204} width={240} height={70} rx={8} style={{ ...boxStyle, fill: '#f8fafc' }} />
+      <text x={490} y={228} style={{ ...textStyle, fontWeight: 700 }}>
+        POVM {'{Mₖ}'}（見る）
+      </text>
+      <text x={490} y={248} style={textStyle}>
+        確率 Tr(Mₖρ)、結果k
+      </text>
+      <text x={490} y={264} style={{ ...labelStyle, fontSize: 11 }}>
+        条件付き状態 ∝ KₖρKₖ†
+      </text>
+
+      <line x1={130} y1={274} x2={130} y2={310} stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 3" />
+      <line x1={490} y1={274} x2={490} y2={310} stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 3" />
+      <line x1={130} y1={310} x2={490} y2={310} stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 3" />
+      <text x={310} y={334} style={{ ...labelStyle, fontSize: 12 }}>
+        同じKₖから、Mₖ:=Kₖ†Kₖ で結ばれている——同じ物理的な設定に
+      </text>
+      <text x={310} y={350} style={{ ...labelStyle, fontSize: 12 }}>
+        「何が起きたか見るか、見ないか」という別の問いを立てているだけ
+      </text>
+    </svg>
+  )
+}
+
 /**
  * A standalone reference page, separate from the step-by-step visualizer.
  * The visualizer steps stay focused on running/reading QAOA experiments;
@@ -384,41 +465,146 @@ export function ConceptsPage() {
         （completely positive trace-preserving map）——だけが量子チャネルとして許されます。
         ユニタリ演算ρ↦UρU†はこの中でも情報を一切失わない特別な場合です。
       </p>
+      <h3 style={subHeaderStyle}>なぜ「完全」正値性が必要なのか</h3>
+      <p style={bodyStyle}>
+        CPTP写像の条件のうち、トレース保存（①）は「確率の合計が1のまま」という自然な要請
+        ですが、②の<strong>完全正値性</strong>はなぜ、単なる「正値性」では足りないのでしょうか。
+        密度行列ρは常に正定値（固有値が全て0以上）なので、変換Eが物理的に妥当であるためには
+        少なくとも変換後の状態も正定値でなければなりません——これが「正値写像」の条件です。
+        しかしこれだけでは不十分な例が存在します。
+      </p>
+      <p style={bodyStyle}>
+        <strong>転置写像T：ρ↦ρᵀ</strong>を考えます。転置は固有値を変えないので、Tは単体では
+        正しく正値写像です（実際、Tはどんな1量子ビットの密度行列も別の正しい密度行列に写します）。
+        ところが、2量子ビットの最大もつれ状態（ベル状態）
+      </p>
+      <FormulaBlock>|Φ⁺⟩ = (|00⟩ + |11⟩) / √2</FormulaBlock>
+      <p style={bodyStyle}>
+        に対して、<strong>片方の量子ビットにだけ</strong>Tを、もう片方には何もしない
+        （恒等演算子I）を同時に適用する——つまりT⊗Iを適用する——と、結果の行列
+        （部分転置）は次の固有値を持ちます。
+      </p>
+      <FormulaBlock>固有値 = 1/2, 1/2, 1/2, −1/2</FormulaBlock>
+      <p style={bodyStyle}>
+        <strong>負の固有値−1/2が現れます。</strong>負の固有値を持つ行列はもはや密度行列
+        （確率分布）として意味を持たず、T⊗Iは物理的に許されない変換だということになります。
+      </p>
+      <p style={bodyStyle}>
+        つまり、「量子ビット単体を見る限り正しく見える変換」が、「もつれた相手の系と組み合わせた
+        瞬間に破綻する」ことがあり得ます。量子ビットは（このアプリのノイズのStepで見た通り）
+        常に周囲の環境と何らかの形でもつれ得るので、単体で正値というだけでは不十分です。
+      </p>
+      <FormulaBlock>どんな補助系（次元kは任意）と組んでも E⊗I<sub>k</sub> が常に正値</FormulaBlock>
+      <p style={bodyStyle}>
+        ——これが完全正値性（completely positive）の意味です。次のクラウス表現を持つ変換は、
+        この条件を自動的に満たします（逆に、任意のCP写像はこの形に書けることが知られています
+        ——Choiの定理）。
+      </p>
+      <FormulaBlock>
+        E(ρ) = Σ<sub>k</sub> K<sub>k</sub>ρK<sub>k</sub>†
+      </FormulaBlock>
+      <p style={bodyStyle}>
+        この「破綻しない」という保証があるからこそ、後述のStinespring表現（量子ビットと環境を
+        一緒にユニタリに発展させる）という描像が矛盾なく成り立ちます。
+      </p>
+
       <h3 style={subHeaderStyle}>チャネルの正体：環境との相互作用（Stinespring表現）</h3>
       <p style={bodyStyle}>
         どんな量子チャネルも、「量子ビットを、決まった初期状態の環境と一緒にユニタリに時間発展
         させ、その環境部分は見ずに捨てる」という手続き（Stinespring表現）として理解できます。
         環境との相互作用自体は完全にユニタリ（情報を失わない）なのですが、その環境部分を見ずに
         捨てる（部分トレースをとる）せいで、量子ビット単体から見ると情報が失われたように
-        見える——これが「チャネル」の正体です。同じ内容は、E(ρ)=Σ<sub>k</sub>K<sub>k</sub>ρ
-        K<sub>k</sub>†（Σ<sub>k</sub>K<sub>k</sub>†K<sub>k</sub>=I）という
-        <strong>クラウス演算子</strong>K<sub>k</sub>の集まりでも書けます——後述する
-        「量子トラジェクトリ法」は、このどのクラウス演算子が起きたかを1ショットごとに確率的に
-        サンプルすることで、見ずに捨てている環境の情報を統計的に復元しています。
+        見える——これが「チャネル」の正体です。同じ内容は、次の
+        <strong>クラウス演算子</strong>K<sub>k</sub>の集まりでも書けます。
+      </p>
+      <FormulaBlock>
+        E(ρ) = Σ<sub>k</sub> K<sub>k</sub>ρK<sub>k</sub>†，　Σ<sub>k</sub> K<sub>k</sub>†K<sub>k</sub> = I
+      </FormulaBlock>
+      <p style={bodyStyle}>
+        後述する「量子トラジェクトリ法」は、このどのクラウス演算子が起きたかを1ショットごとに
+        確率的にサンプルすることで、見ずに捨てている環境の情報を統計的に復元しています。
       </p>
 
       <h3 style={subHeaderStyle}>POVMとの関係</h3>
       <p style={bodyStyle}>
         密度行列の変換（チャネル）ではなく、測定で「どの結果が起きたか」という確率だけに
         注目したいときは、<strong>POVM</strong>（positive operator-valued measure、正作用素
-        値測度）という道具を使います。POVMは、Σ<sub>k</sub>M<sub>k</sub>=I（完全性、確率の
-        合計が1になる条件）を満たす正定値演算子の集合{'{M'}<sub>k</sub>{'}'}で、状態ρを測定して
-        結果kを得る確率はTr(M<sub>k</sub>ρ)で与えられます——射影測定のように直交射影子である
-        必要はなく、一般化された測定です。
+        値測度）という道具を使います。POVMは、正定値演算子の集合{'{M'}<sub>k</sub>{'}'}で、
+        次の完全性の条件（確率の合計が1になる条件）を満たすものです。
+      </p>
+      <FormulaBlock>
+        Σ<sub>k</sub> M<sub>k</sub> = I
+      </FormulaBlock>
+      <p style={bodyStyle}>状態ρを測定して結果kを得る確率は、次の式で与えられます。</p>
+      <FormulaBlock>
+        P(k) = Tr(M<sub>k</sub>ρ)
+      </FormulaBlock>
+      <p style={bodyStyle}>
+        射影測定のように直交射影子である必要はなく、一般化された測定です。これは上のクラウス
+        演算子と直接つながっています。チャネルのクラウス演算子K<sub>k</sub>に対して、次のように
+        定義すると、
+      </p>
+      <FormulaBlock>
+        M<sub>k</sub> := K<sub>k</sub>†K<sub>k</sub>
+      </FormulaBlock>
+      <p style={bodyStyle}>
+        {'{M'}<sub>k</sub>{'}'}はちょうどPOVMになります（各M<sub>k</sub>はK<sub>k</sub>†
+        K<sub>k</sub>の形なので正定値、Σ<sub>k</sub>M<sub>k</sub>=Σ<sub>k</sub>K<sub>k</sub>†
+        K<sub>k</sub>=Iはクラウス演算子の規格化条件そのものです）。つまり、
+        <strong>チャネル（CPTP写像）は「測定結果を見ずに（捨てて）状態がどう変わるか」</strong>
+        を記述し、<strong>POVMは「どの測定結果がどんな確率で得られるか」</strong>だけを
+        記述する——同じ「環境・測定器とユニタリに相互作用させたあと、その一部を見る/見ないか」
+        の違いにすぎず、どちらもStinespring表現から導かれます。
+      </p>
+
+      <StinespringDiagram />
+
+      <p style={bodyStyle}>
+        上の図の左右2つの箱は、同じ結合ユニタリUと同じクラウス演算子{'{K'}<sub>k</sub>{'}'}から、
+        「環境を見ない」か「環境を見る」かだけで枝分かれしています。上で述べた量子
+        トラジェクトリ法がどのクラウス演算子が起きたかを選ぶ操作は、次の確率に従っており、
+      </p>
+      <FormulaBlock>
+        Tr(K<sub>k</sub>ρK<sub>k</sub>†) = Tr(M<sub>k</sub>ρ)
+      </FormulaBlock>
+      <p style={bodyStyle}>
+        まさにこのPOVM{'{M'}<sub>k</sub>{'}'}による測定を（結果を見ずに）行っていることに
+        相当します。
       </p>
       <p style={bodyStyle}>
-        これは上のクラウス演算子と直接つながっています。チャネルE(ρ)=Σ<sub>k</sub>K<sub>k</sub>
-        ρK<sub>k</sub>†のクラウス演算子K<sub>k</sub>に対して、M<sub>k</sub>:=K<sub>k</sub>†
-        K<sub>k</sub>と定義すると、{'{M'}<sub>k</sub>{'}'}はちょうどPOVMになります（各M
-        <sub>k</sub>はK<sub>k</sub>†K<sub>k</sub>の形なので正定値、Σ<sub>k</sub>M<sub>k</sub>=
-        Σ<sub>k</sub>K<sub>k</sub>†K<sub>k</sub>=Iはクラウス演算子の規格化条件そのものです）。
-        つまり、<strong>チャネル（CPTP写像）は「測定結果を見ずに（捨てて）状態がどう変わるか」
-        </strong>を記述し、<strong>POVMは「どの測定結果がどんな確率で得られるか」</strong>
-        だけを記述する——同じ「環境・測定器とユニタリに相互作用させたあと、その一部を見る/
-        見ないか」の違いにすぎず、どちらもStinespring表現から導かれます。上で述べた量子
-        トラジェクトリ法が確率Tr(K<sub>k</sub>ρK<sub>k</sub>†)=Tr(M<sub>k</sub>ρ)でどの
-        クラウス演算子が起きたかを選ぶ操作は、まさにこのPOVM{'{M'}<sub>k</sub>{'}'}による
-        測定を（結果を見ずに）行っていることに相当します。
+        <strong>POVMだけでは測定後の状態までは決まらない、という点に注意が必要です。</strong>
+        M<sub>k</sub>=K<sub>k</sub>†K<sub>k</sub>という分解の仕方（「平方根」の取り方）は
+        一意ではありません——例えば任意のユニタリVについて次のように置き換えても、
+      </p>
+      <FormulaBlock>K<sub>k</sub>' := VK<sub>k</sub></FormulaBlock>
+      <FormulaBlock>
+        K<sub>k</sub>'†K<sub>k</sub>' = K<sub>k</sub>†V†VK<sub>k</sub> = K<sub>k</sub>†K<sub>k</sub> = M<sub>k</sub>
+      </FormulaBlock>
+      <p style={bodyStyle}>
+        は変わりません。しかし測定後の（結果kが出たときの、規格化する前の）条件付き状態
+        K<sub>k</sub>ρK<sub>k</sub>†はK<sub>k</sub>'の選び方によって変わり得ます。つまり
+        POVM{'{M'}<sub>k</sub>{'}'}が決めるのは<strong>「各結果がどんな確率で得られるか」
+        だけ</strong>で、「測定後に系がどんな状態になるか」まで指定するには、より詳細な情報
+        ——各結果kに対応する具体的なクラウス演算子（の集まり）K<sub>k</sub>そのもの、これを
+        <strong>量子インストゥルメント</strong>と呼びます——が必要です。このアプリのノイズの
+        Stepでは測定後の状態は扱わず確率分布だけを見ているので、常にPOVMのレベルの情報だけで
+        足りています。
+      </p>
+      <p style={bodyStyle}>
+        <strong>最も単純な特別な場合：射影測定。</strong>§2のボルンの規則で使った「計算基底で
+        測定してビット列bを確率|c<sub>b</sub>|²で得る」という測定は、POVMの中でも特に単純な
+        場合——各M<sub>k</sub>が計算基底状態への射影演算子そのものである
+        <strong>射影測定（von Neumann測定）</strong>にあたります。
+      </p>
+      <FormulaBlock>
+        M<sub>b</sub> = Π<sub>b</sub> = |b⟩⟨b|，　Π<sub>b</sub>² = Π<sub>b</sub> = Π<sub>b</sub>†
+      </FormulaBlock>
+      <p style={bodyStyle}>
+        （直交射影子：Kraus演算子K<sub>b</sub>もΠ<sub>b</sub>そのものです）この場合は
+        Tr(Π<sub>b</sub>ρ)がちょうど|c<sub>b</sub>|²に一致し、測定後の状態もΠ<sub>b</sub>ρΠ
+        <sub>b</sub>を規格化した|b⟩⟨b|そのもの（元の重ね合わせは壊れ、測定で得たビット列に
+        「収縮」する）になります。POVMはこれを、直交射影子である必要のない、より一般の
+        正定値演算子にまで広げたものです。
       </p>
 
       <h2 style={sectionHeaderStyle}>8. 脱分極チャネル（depolarizing channel）</h2>
