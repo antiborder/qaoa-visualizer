@@ -233,3 +233,16 @@ def get_circuit_diagram(kind: str, graph: Graph = Depends(_resolve_graph)):
         raise HTTPException(status_code=400, detail=f"unknown diagram kind: {kind}")
     png_bytes = render_circuit_png(graph, kind)
     return Response(content=png_bytes, media_type="image/png")
+
+
+# Production only: when FRONTEND_DIST points at a built frontend bundle
+# (see the repo-root Dockerfile), serve it from this same process so the
+# whole app lives on one origin. Unset in local dev, where Vite serves
+# the frontend on its own port and this block does nothing.
+import os
+
+from fastapi.staticfiles import StaticFiles
+
+_frontend_dist = os.environ.get("FRONTEND_DIST")
+if _frontend_dist and os.path.isdir(_frontend_dist):
+    app.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")

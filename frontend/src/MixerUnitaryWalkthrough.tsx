@@ -4,7 +4,13 @@ import { Callout, FormulaBlock } from './Formula'
 import { Histogram } from './Histogram'
 import type { Lang, P1Result, WalkthroughStep } from './types'
 
-const API_BASE = 'http://localhost:8000'
+// Local dev talks to the backend on :8000; in production the frontend
+// is served by the backend itself, so the same origin ('' base) is used.
+const API_BASE =
+  import.meta.env.VITE_API_BASE ??
+  (location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000'
+    : '')
 const DEBOUNCE_MS = 150
 
 interface MixerUnitaryArgs {

@@ -1,0 +1,10 @@
+# Render Blueprint: one free Web Service running the Docker image
+# (backend + built frontend in a single container / single URL).
+# Free instances spin down after ~15 min idle and take ~1 min to wake.
+services:
+  - type: web
+    name: qaoa-visualizer
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/graphs

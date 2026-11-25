@@ -5,7 +5,13 @@ import { ColVec, Frac, FormulaBlock } from './Formula'
 import { Landscape3D, nearestGridValue } from './Landscape3D'
 import type { Lang, LandscapeResult, OptimizerMethod, TrajectoryPoint } from './types'
 
-const API_BASE = 'http://localhost:8000'
+// Local dev talks to the backend on :8000; in production the frontend
+// is served by the backend itself, so the same origin ('' base) is used.
+const API_BASE =
+  import.meta.env.VITE_API_BASE ??
+  (location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000'
+    : '')
 
 const methodMeta = (lang: Lang): { key: OptimizerMethod; label: string; color: string }[] => [
   { key: 'cobyla', label: 'COBYLA', color: '#3b82f6' },
